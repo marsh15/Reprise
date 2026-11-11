@@ -1265,6 +1265,12 @@ The M2 implementation is deterministic-test verified. The controlled live bake-o
 
 The nine synthetic/mock scenarios validate the harness only, including injection containment; they are not model scores. No live Tavily recordings were made (`TAVILY_API_KEY` absent). No real-model injection-resistance result is claimed. Official sources: [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [OpenRouter endpoint catalog](https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints). The selection hierarchy above is unchanged; the owner must approve any eventual winner. M3-dependent scenarios remain deferred rather than being counted as passes.
 
+#### M4 execution record — 11 November 2026
+
+All 19 §N.2 scenarios plus J2/K2/K3/T1 are implemented: **23 mock scenarios pass (11 P0, 12 P1)**. The full offline suite passes **322 tests on Node 24.22.2 and 26.10.0**, with strict TypeScript and production builds. These are deterministic/mock results, not model acceptance. Reports now separate mock, synthetic-search replay, recorded-search replay, mixed replay and fully live execution, with request/event traces and per-scenario latency/cost fields; unknown measurements stay null.
+
+The live bake-off remains **pending**: OpenAI and Tavily keys are absent; one explicit OpenRouter/DeepSeek D1 request returned HTTP 402 before generation; the existing Terra Chat Completions tool incompatibility guard remains. Every candidate's real P0/P1 rate, inference latency, token consumption, cost and tool reliability is **untested/unknown**. No provider was silently substituted and no default model was selected or changed. See [M4-CHECKPOINT.md](M4-CHECKPOINT.md) for actual failures, verification, risks and delivery, and the [evaluation README](../evals/README.md) for runnable capture/replay/comparison commands. M4 live acceptance is not satisfied and M5 has not started.
+
 ### N.5 Demo fixtures (`seed:demo`)
 
 Dates are relative to the run date in the user's timezone. Every row has `origin='fixture'`, and every fixture source has `fixture=1`. Its excerpt starts with "[Demo fixture — illustrative data captured for testing]".
