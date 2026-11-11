@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { loadEnvFile } from 'node:process';
@@ -27,6 +28,8 @@ const rows: { id: string; priority: string; failures: string[]; result: TurnResu
 let blocked: string | null = null; let provider = 'mock';
 let llm: ReturnType<typeof evaluationLlm>['llm'] | undefined;
 try {
+  if (live && record) throw new Error('--live and --record are separate modes');
+  if (record && option('--cassette-dir') && resolve(option('--cassette-dir')!) === resolve('evals/search-cassettes')) throw new Error('Record into a separate directory; checked-in cassettes are frozen');
   if (mock && (live || record)) throw new Error('--mock cannot be combined with live or record');
   if (!selected.length) throw new Error('No M2 scenarios selected; recall scenarios are deferred to M3');
   if ((live || record) && !process.env.TAVILY_API_KEY?.trim()) throw new Error('TAVILY_API_KEY absent; live search/recording unavailable');
@@ -72,21 +75,22 @@ const p0 = tested.filter(row => row.priority === 'P0');
 const price = prices.models.find(price => price.model === model && price.provider === provider);
 const cost = (result: TurnResult) => !mock && result.stats.usageComplete && price?.input != null && price.output != null
   ? (result.stats.inputTokens * price.input + result.stats.outputTokens * price.output) / 1e6 : null;
+const usageComplete = rows.length > 0 && rows.every(row => row.result.stats.usageComplete);
 const metrics = mock ? null : {
   p0PassRate: p0.length ? p0.filter(row => !row.failures.length).length / p0.length : null, p0Passed: p0.filter(row => !row.failures.length).length, p0Attempted: p0.length, p0Planned: selected.filter(s => s.priority === 'P0').length,
   medianTtftMs: median(completed.flatMap(row => row.result.stats.ttftMs === null ? [] : [row.result.stats.ttftMs])),
   medianLatencyMs: median(completed.map(row => row.result.stats.latencyMs)),
-  inputTokens: rows.reduce((n, row) => n + row.result.stats.inputTokens, 0), outputTokens: rows.reduce((n, row) => n + row.result.stats.outputTokens, 0),
+  usageComplete, inputTokens: usageComplete ? rows.reduce((n, row) => n + row.result.stats.inputTokens, 0) : null, outputTokens: usageComplete ? rows.reduce((n, row) => n + row.result.stats.outputTokens, 0) : null,
   medianEstimatedUsdPerTurn: median(completed.flatMap(row => cost(row.result) === null ? [] : [cost(row.result)!])),
   costMethod: 'Usage × pinned endpoint price; ignores cache discounts. Missing usage/price => unknown. Excludes search credits.',
-  toolCallReliability: { calls: rows.reduce((n, row) => n + (row.result.stats.toolCalls ?? 0), 0), invalidCalls: rows.reduce((n, row) => n + (row.result.stats.invalidToolCalls ?? 0), 0), duplicateQueries: rows.reduce((n, row) => n + (row.result.evidence?.searches.filter(s => s.error === 'duplicate').length ?? 0), 0), researchScenarios: rows.filter(row => row.result.stats.searches > 0).length,
+  toolCallReliability: !tested.length ? null : { calls: rows.reduce((n, row) => n + (row.result.stats.toolCalls ?? 0), 0), invalidCalls: rows.reduce((n, row) => n + (row.result.stats.invalidToolCalls ?? 0), 0), duplicateQueries: rows.reduce((n, row) => n + (row.result.evidence?.searches.filter(s => s.error === 'duplicate').length ?? 0), 0), researchScenarios: rows.filter(row => row.result.stats.searches > 0).length,
     completedWithCitations: rows.filter(row => row.result.stats.searches > 0 && row.result.status === 'complete' && row.result.evidence?.citations.length).length },
 };
 const report = { model: mock ? 'scripted fake (not a model benchmark)' : model, provider, baseURL, frozen, mode: mock ? 'mock' : live ? 'live' : record ? 'record' : 'replay', blocked, metrics, deferredToM3: deferred, untested: selected.filter(s => !tested.some(r => r.id === s.id)).map(s => s.id), rows };
 await mkdir('evals/results', { recursive: true });
 const filename = `evals/results/${createClock().now().toISOString().replaceAll(':', '-')}-${mock ? 'mock' : model.replaceAll('/', '-')}`;
 await writeFile(filename + '.json', JSON.stringify(report, null, 2) + '\n');
-await writeFile(filename + '.md', `# M2 evaluation\n\nMode: ${report.mode}; model: ${report.model}; provider: ${provider}\n\n${blocked ? 'Blocked: ' + blocked : 'Completed selected scenarios.'}\n\n${mock ? 'Scripted assertions validate the harness, not model quality.' : JSON.stringify(metrics, null, 2)}\n\n` + rows.map(row => `## ${row.id}: ${row.failures.length ? 'FAIL' : 'PASS'}\n\n${row.failures.join('; ')}\n\n${row.result.text}\n\nInput SHA-256: ${row.inputHash}\n`).join('\n'));
+await writeFile(filename + '.md', `# M2 evaluation\n\nMode: ${report.mode}; model: ${report.model}; provider: ${provider}\n\n${blocked ? 'Blocked: ' + blocked : 'Completed selected scenarios.'}\n\n${mock ? 'Scripted assertions validate the harness, not model quality.' : JSON.stringify(metrics, null, 2)}\n\n` + rows.map(row => `## ${row.id}: ${row.result.error?.startsWith('llm_http_') ? 'UNTESTED (provider blocked)' : row.failures.length ? 'FAIL' : 'PASS'}\n\n${row.failures.join('; ')}\n\n${row.result.text}\n\nInput SHA-256: ${row.inputHash}\n`).join('\n'));
 console.log(`${blocked ? 'BLOCKED: ' + blocked + '\n' : ''}Report: ${filename}.{json,md}`);
 if (blocked) process.exitCode = 2;
 else if (rows.some(row => row.failures.length)) process.exitCode = 1;

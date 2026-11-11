@@ -15,3 +15,17 @@ it('runs the reproducible mock harness while explicitly withholding model scores
     expect(report.deferredToM3).toContain('C1');
   } finally { await Promise.all([rm(path + '.json'), rm(path + '.md')]); }
 });
+it('reports absent credentials as untested with unknown usage and cost, not a zero score', async () => {
+  let stdout = '';
+  try {
+    await exec(process.execPath, ['--import', 'tsx', 'evals/run.ts'], { env: { ...process.env, LLM_API_KEY: '', LLM_BASE_URL: 'https://api.openai.com/v1', LLM_MODEL: 'gpt-6-luna' } });
+    throw new Error('Expected blocked evaluation');
+  } catch (error) { expect(error).toMatchObject({ code: 2 }); stdout = (error as { stdout: string }).stdout; }
+  const path = stdout.match(/Report: (.+)\.\{json,md\}/)![1];
+  try {
+    const report = JSON.parse(await readFile(path + '.json', 'utf8'));
+    expect(report.blocked).toContain('LLM_API_KEY absent');
+    expect(report.metrics).toMatchObject({ p0PassRate: null, inputTokens: null, outputTokens: null, medianEstimatedUsdPerTurn: null, toolCallReliability: null });
+    expect(report.untested).toHaveLength(9);
+  } finally { await Promise.all([rm(path + '.json'), rm(path + '.md')]); }
+});
