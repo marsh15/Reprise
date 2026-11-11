@@ -7,12 +7,20 @@ import { createApp } from './app';
 import { loadConfig } from './config';
 import { createClock } from './clock';
 import { createLogger } from './log';
+import { openDatabase } from './db/db';
+import { createRepo } from './db/repo';
+import { createLlm } from './llm/client';
+import { createRunTurn } from './agent/runTurn';
+import { createTurnService } from './turns/service';
 
 async function main() {
   const config = loadConfig();
   const clock = createClock(config.REPRISE_NOW);
   const log = createLogger(clock, config.LOG_LEVEL);
-  const apiListener = getRequestListener(createApp(config, clock).fetch);
+  const store = openDatabase(config.REPRISE_DB_PATH);
+  const repo = createRepo(store);
+  const turns = createTurnService(repo, createRunTurn(createLlm(config), config), clock, config.LLM_MODEL);
+  const apiListener = getRequestListener(createApp(config, clock, { repo, turns }).fetch);
   const production = process.env.NODE_ENV === 'production';
   const httpServer = createServer();
   let vite: import('vite').ViteDevServer | undefined;
@@ -49,6 +57,7 @@ async function main() {
       message: error.code === 'EADDRINUSE' ? `Port ${config.PORT} is in use. Stop the other server or change PORT in .env.` : 'HTTP server failed.',
     });
     void vite?.close();
+    void turns.shutdown().then(() => store.close());
     process.exitCode = 1;
   });
   httpServer.listen(config.PORT, '127.0.0.1', () => {
@@ -60,7 +69,10 @@ async function main() {
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
       httpServer.close();
-      void vite?.close();
+      void turns.shutdown().then(async () => {
+        await vite?.close();
+        store.close();
+      });
     });
   }
 }
