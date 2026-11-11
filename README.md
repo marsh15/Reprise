@@ -2,7 +2,7 @@
 
 A local chat agent that treats answers as dated observations: remember the conversation, research current information, and keep the evidence.
 
-**Current milestone: M2 implementation checkpoint.** Streaming chat now includes bounded Tavily research, a durable evidence ledger, citation checks, and research/source UI. Deterministic verification passes; live provider acceptance and the model bake-off remain blocked. Cross-conversation recall is M3. See the [M2 checkpoint](docs/M2-CHECKPOINT.md).
+**Current milestone: M3 implementation checkpoint.** Deterministic temporal resolution, cross-conversation recall, honest missing-history context, labelled demo fixtures, and recall navigation are implemented and locally verified. Live M3 model verification is blocked by the absent LLM key. M2 live acceptance and the bake-off remain pending; no model winner has been selected. See [M3 checkpoint](docs/M3-CHECKPOINT.md).
 
 ## Run locally
 
@@ -58,13 +58,27 @@ Configuration is parsed once with Zod. The clock centralizes real versus frozen 
 
 ## Upcoming milestones
 
-M2 implementation is available with live acceptance/model selection pending. M3 adds deterministic temporal recall and explicitly labelled demo fixtures, only after owner approval. M4 completes evaluations, M5 reliability and UX, and M6 submission documentation.
+M3 is the current stopping point. M4 requires owner approval; it completes change/recheck evaluations. M5 reliability/UX and M6 submission documentation remain later work.
 
-`npm run eval` is implemented; see [evaluation commands and limits](evals/README.md). `seed:demo` belongs to M3. Fixtures will never seed automatically or be presented as genuine conversations. Final `DESIGN.md` and interview notes are M6 deliverables.
+`npm run eval` runs real-model scenarios when credentials are available; see [evaluation commands and limits](evals/README.md). `npm run eval -- --mock` validates the harness with scripted answers and does not measure model quality. Final `DESIGN.md` and interview notes remain M6 deliverables.
+
+## Demo history and recall
+
+```bash
+npm run seed:demo -- --tz Asia/Kolkata
+# Replace only labelled fixture conversations; preserve live conversations:
+npm run seed:demo -- --tz Asia/Kolkata --reset-fixtures
+```
+
+Seeding is explicit, never part of startup, and needs no API keys. It inserts four conversations: CRM shortlist, Postgres hosting, Node versus Bun, and weekend plans. Dates are relative to the supplied timezone and centralized clock. Fixture titles/messages/sources are labelled as illustrative demo data, not genuine user history or current prices. Repeating the command refuses duplicates unless the targeted reset flag is supplied. Do not add real history to a demo conversation if you want it preserved during fixture reset.
+
+Before the model runs, code resolves English dates and queries stored local dates plus FTS5 keywords across conversations. It retrieves raw user messages, original assistant answers and associated observations. Recall chips link to the original message, with a demo badge for fixtures. Missing records are explicit; the prompt forbids inventing a past answer or using the web to reconstruct a private conversation. Live-model compliance still needs verification.
+
+English dates such as `3 November` are supported; numeric `3/11` dates are deliberately unsupported. A bare weekday means its most recent strictly past occurrence; `last Tuesday` produces two candidates, selected using topic matches and recorded conversations. Later timezone changes do not move stored local dates. Overlarge protected evidence produces a clarification rather than silently dropping user text.
 
 ## Privacy and limits
 
-The target is single-user local use, without authentication. History stays in an ignored SQLite file under `data/`. Answer generation sends the latest 20 messages of the selected conversation to the configured LLM provider. The browser stores the selected conversation id locally and temporarily keeps an unacknowledged request in session storage for safe recovery. Research sends queries to Tavily. The LLM also receives the cited source observations carried from the last two assistant replies (up to eight), plus new search excerpts. There is no telemetry. `.env`, databases, generated evaluation results, and dependency/build directories are ignored by Git.
+The target is single-user local use, without authentication. History stays in an ignored SQLite file under `data/`. Answer generation sends up to 20 recent messages, a bounded packet of relevant historical turns from other conversations, a conversation index and history-start information to the configured LLM provider. The browser stores the selected conversation id locally and temporarily keeps an unacknowledged request in session storage for safe recovery. Research sends queries to Tavily. The LLM also receives the cited source observations carried from the last two assistant replies (up to eight), plus new search excerpts. There is no telemetry. `.env`, databases, generated evaluation results, and dependency/build directories are ignored by Git.
 
 ## M0 verification record
 
@@ -108,7 +122,7 @@ The model sees exactly one tool: `web_search`. Code enforces three research roun
 Search observations retain their sanitized excerpt, title, canonical HTTP(S) URL, provider publication date when available, retrieval time, and parent search. Citation states check source identity and numerical/date tokens. **Verified means those tokens were found; it does not verify meaning, source quality, or whether a claim is true.** Unknown markers and missing tokens remain visible. Deleting a conversation deletes its sources.
 
 ```bash
-npm run eval -- --mock  # nine scripted scenarios; validates the harness, not model quality
+npm run eval -- --mock  # 13 scripted scenarios; validates the harness, not model quality
 npm run eval           # real LLM + frozen replay; reports blocked access explicitly
 ```
 

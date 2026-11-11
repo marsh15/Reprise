@@ -34,4 +34,4 @@ export const scenarios: Scenario[] = [
   { id: 'K1', priority: 'P1', text: 'Which Example plan is cheaper per seat per month? Use the exact search query: Example billing plans', cassette: 'K1',
     script: [{ calls: [call('Example billing plans')] }, { text: ['The plans differ in billing: $90 monthly [1] versus $80 billed annually [2].'] }], assert: r => [...grounded(r), ...(!/annual|billing/i.test(r.text) ? ['billing period missing'] : []), ...(r.evidence?.citations.some(c => c.state === 'unverified') ? ['unverified citation'] : [])] },
 ];
-export const deferred = ['B2', 'C1', 'C2', 'C3', 'H2', 'J1']; // Require M3 recall/fixtures.
+export const deferred = ['B2', 'C1', 'C2', 'C3', 'H2', 'J1']; // Remaining scenario coverage belongs to M4.
