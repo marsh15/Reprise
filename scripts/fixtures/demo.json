@@ -1,0 +1,77 @@
+[
+  {
+    "key": "crm",
+    "title": "[Demo] CRM shortlist for a 20-person sales team",
+    "user": "[Demo conversation — illustrative testing data] Shortlist CRMs for a 20-person sales team that needs pipeline tracking, email integration, and simple reporting. Include illustrative per-seat prices.",
+    "assistant": "[Demo conversation — illustrative testing data] Here is a fictional shortlist for comparison; prices are invented examples, not verified current pricing. HubSpot Sales Hub Starter: USD $20 per seat/month [1], with a broad sales toolkit. Pipedrive Essential: USD $15 per seat/month [2], focused on pipelines. Zoho CRM Standard: USD $14 per seat/month [3], a lower-cost example with reporting. Salesforce Starter Suite: USD $25 per seat/month [4], with room to grow. Close Startup: USD $49 per seat/month [5], geared toward sales outreach. Check each vendor's current terms and integrations before deciding.",
+    "sources": [
+      {
+        "url": "https://www.hubspot.com/products/sales/pricing",
+        "title": "[Demo] HubSpot Sales Hub pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] HubSpot Sales Hub Starter: illustrative price USD $20 per seat per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://www.pipedrive.com/en/pricing",
+        "title": "[Demo] Pipedrive pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Pipedrive Essential: illustrative price USD $15 per seat per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://www.zoho.com/crm/zohocrm-pricing.html",
+        "title": "[Demo] Zoho CRM pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Zoho CRM Standard: illustrative price USD $14 per seat per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://www.salesforce.com/sales/pricing/",
+        "title": "[Demo] Salesforce pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Salesforce Starter Suite: illustrative price USD $25 per seat per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://www.close.com/pricing",
+        "title": "[Demo] Close pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Close Startup: illustrative price USD $49 per seat per month. This invented example is not verified current pricing."
+      }
+    ]
+  },
+  {
+    "key": "postgres",
+    "title": "[Demo] Postgres hosting for a side project",
+    "user": "[Demo conversation — illustrative testing data] Compare Postgres hosting for a small side project. I care about a low starting cost and easy setup.",
+    "assistant": "[Demo conversation — illustrative testing data] These invented monthly examples are for testing, not verified current prices: Neon Launch at USD $19 per project/month [1], Supabase Pro at USD $25 per project/month [2], Amazon RDS for PostgreSQL on-demand at USD $18 per instance/month [3], and Railway Hobby at USD $5 per workspace/month [4]. The units differ, and usage, storage, and included services can change the total. Check current pricing and limits before choosing.",
+    "sources": [
+      {
+        "url": "https://neon.com/pricing",
+        "title": "[Demo] Neon pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Neon Launch: illustrative price USD $19 per project per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://supabase.com/pricing",
+        "title": "[Demo] Supabase pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Supabase Pro: illustrative price USD $25 per project per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://aws.amazon.com/rds/postgresql/pricing/",
+        "title": "[Demo] Amazon RDS for PostgreSQL pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Amazon RDS for PostgreSQL on-demand: illustrative price USD $18 per instance per month. This invented example is not verified current pricing."
+      },
+      {
+        "url": "https://railway.com/pricing",
+        "title": "[Demo] Railway pricing",
+        "excerpt": "[Demo fixture — illustrative data captured for testing] Railway Hobby: illustrative price USD $5 per workspace per month. This invented example is not verified current pricing."
+      }
+    ]
+  },
+  {
+    "key": "node",
+    "title": "[Demo] Node vs Bun for a new API",
+    "user": "[Demo conversation — illustrative testing data] For a new API, how should I choose between Node and Bun if stability matters more than speed?",
+    "assistant": "[Demo conversation — illustrative testing data] Node is a sensible default when a mature ecosystem and compatibility with existing packages matter most. Bun offers an integrated toolchain and may be attractive for speed and developer experience, but check the specific libraries and runtime features your API needs. Try a small prototype and run your tests on the runtime you choose.",
+    "sources": []
+  },
+  {
+    "key": "weekend",
+    "title": "[Demo] Weekend plans",
+    "user": "[Demo conversation — illustrative testing data] I might take a long walk and try a new recipe this weekend.",
+    "assistant": "[Demo conversation — illustrative testing data] That sounds like a relaxing combination. Maybe pick a recipe you can prepare after the walk and enjoy a quiet evening.",
+    "sources": []
+  }
+]
