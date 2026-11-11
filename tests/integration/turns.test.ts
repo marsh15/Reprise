@@ -172,6 +172,7 @@ it.each(['complete', 'interrupted'] as const)('replays a lost retry acknowledgem
   const duplicate = await post(retry);
   // The retry id cannot be claimed by a concurrent new conversation before its attempt is saved.
   const collision = await post({ ...input(), clientMessageId: retry.clientMessageId });
+  await collision.text();
   if (status === 'interrupted') attempt.abort();
   await attempt.run(async () => {}); // The client never received this attempt's acknowledgement.
   expect(duplicate.status).toBe(409);

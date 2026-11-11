@@ -7,6 +7,8 @@
 > Do not change a settled decision without asking the owner.
 > Today's reference date: Wed 2026-11-11 (owner's timezone is Asia/Kolkata).
 
+**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete; live-provider/P0 acceptance and model selection remain blocked. See [M6-CHECKPOINT.md](M6-CHECKPOINT.md). The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
+
 ---
 
 ## Contents
@@ -91,7 +93,7 @@ Questions like "Has anything changed since Monday?" then split into deterministi
 | Compare old and new, and write the answer | LLM, under explicit honesty rules |
 | Check every citation's source and the numbers it supports | Code |
 
-**Central insight: correctness comes from architecture, not from model size.** Memory and dates are handled by code, so the model never has to "remember" or do calendar arithmetic. It reads evidence and writes. That is also why a cheap model is viable.
+**Central insight: correctness comes from architecture, not from model size.** Memory and dates are handled by code, so the model never has to "remember" or do calendar arithmetic. It reads evidence and writes. Whether a cheaper model is sufficient must be established by live evaluation; no winner has been demonstrated.
 
 **What Reprise optimizes, in order:**
 
@@ -1269,7 +1271,7 @@ The nine synthetic/mock scenarios validate the harness only, including injection
 
 All 19 §N.2 scenarios plus J2/K2/K3/T1 are implemented: **23 mock scenarios pass (11 P0, 12 P1)**. The full offline suite passes **322 tests on Node 24.22.2 and 26.10.0**, with strict TypeScript and production builds. These are deterministic/mock results, not model acceptance. Reports now separate mock, synthetic-search replay, recorded-search replay, mixed replay and fully live execution, with request/event traces and per-scenario latency/cost fields; unknown measurements stay null.
 
-The live bake-off remains **pending**: OpenAI and Tavily keys are absent; one explicit OpenRouter/DeepSeek D1 request returned HTTP 402 before generation; the existing Terra Chat Completions tool incompatibility guard remains. Every candidate's real P0/P1 rate, inference latency, token consumption, cost and tool reliability is **untested/unknown**. No provider was silently substituted and no default model was selected or changed. See [M4-CHECKPOINT.md](M4-CHECKPOINT.md) for actual failures, verification, risks and delivery, and the [evaluation README](../evals/README.md) for runnable capture/replay/comparison commands. M4 live acceptance is not satisfied and M5 has not started.
+The live bake-off remains **pending**: OpenAI and Tavily keys are absent; one explicit OpenRouter/DeepSeek D1 request returned HTTP 402 before generation; the existing Terra Chat Completions tool incompatibility guard remains. Every candidate's real P0/P1 rate, inference latency, token consumption, cost and tool reliability is **untested/unknown**. No provider was silently substituted and no default model was selected or changed. See [M4-CHECKPOINT.md](M4-CHECKPOINT.md) for actual failures, verification, risks and delivery, and the [evaluation README](../evals/README.md) for runnable capture/replay/comparison commands. M4 live acceptance is not satisfied. M5 and M6 subsequently completed their independent offline work; see their checkpoints.
 
 ### N.5 Demo fixtures (`seed:demo`)
 
@@ -1550,7 +1552,7 @@ Helper column legend:
 
 ### M5: Hardening and UX polish (~3 h)
 
-**Status (11 November 2026):** M5 implementation and offline verification complete; see [M5-CHECKPOINT.md](M5-CHECKPOINT.md) for the failure-matrix audit, browser/accessibility checks and remaining limitations. M2/M4 live-provider acceptance and model selection remain submission blockers. M6 has not started and requires owner approval.
+**Status (11 November 2026):** M5 implementation and offline verification complete; see [M5-CHECKPOINT.md](M5-CHECKPOINT.md) for the failure-matrix audit, browser/accessibility checks and remaining limitations. M2/M4 live-provider acceptance and model selection remain submission blockers. The owner subsequently approved M6; see its final checkpoint.
 
 **Work:**
 
@@ -1569,6 +1571,8 @@ Helper column legend:
 3. A Lighthouse a11y score ≥ 90 is a nice-to-have, not a gate.
 
 ### M6: Simplification pass + docs + submission (~2 h)
+
+**Status (11 November 2026):** Offline engineering review, documentation and verification complete. Real-model/search acceptance and the model comparison remain blocked; this is not full submission readiness. See [M6-CHECKPOINT.md](M6-CHECKPOINT.md).
 
 **Work:**
 
@@ -1622,7 +1626,7 @@ Helper column legend:
 | Token waste | Long histories | 20-message window, 24k-char context cap, 5 results × 1,500 chars, cached system prompt | Low |
 | Unneeded searches | Small talk | Prompt + E-scenarios assert 0 | Model variance |
 | Fixtures mistaken for real memory | Demo | `origin`/`fixture` flags, UI badge, context label, prompt rule | Low |
-| Cheap model too weak | Everything | Bake-off with P0 gate; env switch to terra | Cost goes up ~10×, still small |
+| Cheap model too weak | Everything | Live P0 evaluation and owner-approved compatible model selection; Terra API mismatch remains unresolved | Capability and cost remain unmeasured |
 | Unknown gpt-6.x API params | M1 | Smoke script + capability map | Low |
 
 **Simplification check done:** no router, no verifier, no summaries, no embeddings, no ORM, no framework, one tool, one process, one DB file. Candidates to cut if time runs short, in order:
@@ -1663,7 +1667,7 @@ Full answers go in `docs/interview-notes.md`. The owner must be able to say each
    The model decides, under prompt rules and hard budgets; there's a deterministic recheck hint when a past turn was recalled and the user asks about change. Evals assert zero searches on small talk.
 
 9. **How would you debug a bad answer?**
-   Trace id → JSON logs (recall summary, each LLM step with tokens and ttft, each search) → ledger rows for that message (queries, excerpts the model saw) → reproduce with the eval runner using a cassette and a frozen clock.
+   Use streamed trace/message/conversation IDs and ledger rows, then reproduce with the evaluation runner and frozen inputs. Current production logs cover startup/recall errors; detailed model request/event traces are in evaluation JSON, not a production trace archive.
 
 10. **What breaks at scale?**
     Single-process active-turn map, SQLite writer lock, FTS over all history, no auth. Next steps: Postgres + pgroonga/tsvector, a per-user partition, a job queue for long research, and embeddings once paraphrase recall matters.
@@ -1672,7 +1676,7 @@ Full answers go in `docs/interview-notes.md`. The owner must be able to say each
     §S.
 
 12. **What did AI generate vs. what did you own?**
-    AI wrote much of the code. I made and can defend D1–D16, wrote or approved the prompt rules, designed the evals, and reviewed every module at milestone checkpoints. Be honest and specific.
+    AI assisted much of the implementation. Describe only architectural decisions, prompt/evaluation approvals, reviews and coding that you actually performed; the checkpoint record does not prove personal authorship or review of every module. Use the evidence and file references in the final interview notes.
 
 13. **Another week?**
     Structured price observations (plan, period, currency, unit), so changes are computed by code. Archived snapshots (e.g. Wayback) for historical prices, which would be justified as part of search. Paraphrase recall. A domain-trust model. A UI to edit and delete memory.
@@ -1702,15 +1706,17 @@ One page, about 550 words.
 
 ## W. 60-second architecture script
 
-> "All three of minimi's examples are about time — what I said when, and what changed since. So Reprise treats every answer as a dated observation.
->
-> Before the model runs, plain code resolves phrases like 'last Tuesday' in your timezone and pulls the exact past turns — and the web sources they used — out of SQLite. The model gets exactly one tool, web search, inside a hard budget: three rounds, parallel queries, a 25-second deadline.
->
-> When it answers, code checks every citation: is it a source we actually retrieved, and do the prices and dates appear in it? If not, the UI marks it.
->
-> For change questions it separates a verified change — a source that dates it — from an observed difference between two dated observations. On a fresh install it says honestly that it has no history.
->
-> Because correctness lives in code, a cheap model works. I picked it by running my eval suite across three models. I deliberately skipped routers, multi-agent setups, and embeddings: none of them fixed a failing scenario."
+The final 149-word script and screen outline are in [architecture-script.md](architecture-script.md). This supersedes the original speculative bake-off claim; no live winner or conversational-quality result is established.
+
+> Minimi tests what we said then and what changed since. Reprise keeps both records.
+
+> Before the model runs, code resolves supported date phrases in the user's timezone and searches SQLite for relevant past turns and their sources. Ambiguous dates come with an explicit assumption. Raw messages remain authoritative; keyword recall can miss paraphrases.
+
+> One model has one tool, web search, in a loop bounded by rounds, queries and research time. Answers stream to the user, and searches and source observations are saved in an evidence ledger.
+
+> Code checks citation markers and whether recognizable numbers appear in the cited excerpts. That is a useful warning, not proof of meaning. A dated source can establish a price change; two observations alone establish a difference.
+
+> I skipped routers and embeddings to keep this path inspectable. Offline tests exercise these boundaries. Live quality and model selection await provider access; the default remains provisional.
 
 ---
 

@@ -12,7 +12,7 @@ Keep these results separate:
 4. **Fully live:** real LLM and Tavily. Historical scenario records remain labelled fixtures; they are not genuine user history. Capture/retrieval time remains actual, even though the scenario clock is frozen.
 5. **Human review:** inspect transcripts, claims and source excerpts for semantic support and conversational quality. Every report leaves this pending. An automatic pass does not complete this review.
 
-M4 currently has no successful real-model run, recorded Tavily observations or fully live research result. See [M4 checkpoint](../docs/M4-CHECKPOINT.md).
+M6 still has no successful real-model run, recorded Tavily observations or fully live research result. Offline verification and remaining submission gates are in the [M6 checkpoint](../docs/M6-CHECKPOINT.md).
 
 ## Run and reproduce
 

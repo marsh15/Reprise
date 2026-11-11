@@ -1,129 +1,87 @@
 # Reprise
 
-A local chat agent that treats answers as dated observations: remember the conversation, research current information, and keep the evidence.
+A local chat agent for **what we discussed then, and what we can verify now**. Reprise combines persistent conversations, deterministic dates and recall, and one bounded web-search tool. Original messages and dated source observations remain available for later rechecks.
 
-**Current milestone: M3 implementation checkpoint.** Deterministic temporal resolution, cross-conversation recall, honest missing-history context, labelled demo fixtures, and recall navigation are implemented and locally verified. Live M3 model verification is blocked by the absent LLM key. M2 live acceptance and the bake-off remain pending; no model winner has been selected. See [M3 checkpoint](docs/M3-CHECKPOINT.md).
+Read [DESIGN.md](DESIGN.md) for the one-page engineering design. **Offline M6 verification is complete; submission acceptance remains blocked by live provider access.** No live-model winner, quality score or latency/cost benchmark is established. See the [M6 checkpoint](docs/M6-CHECKPOINT.md) for exact results and remaining gates.
 
 ## Run locally
 
-Use Node **24 or newer** and npm. With nvm: `nvm install && nvm use`.
+Use **Node 24 or newer** and npm; Node 24 is pinned in `.nvmrc`. Node 24 and 26 are exercised in verification. With nvm, run `nvm install && nvm use`.
 
 ```bash
 npm install
 cp .env.example .env
-# Fill in LLM_API_KEY and TAVILY_API_KEY in .env using your editor.
+# Set LLM_API_KEY and TAVILY_API_KEY privately in .env using your editor.
 npm run dev
 ```
 
-Open http://localhost:5173. `GET /api/health` reports the configured model, search provider, clock mode, and current instant. Health confirms local server readiness; it does not check provider authentication.
+Open http://localhost:5173. `npm run dev` runs preflight first: it checks Node, built-in SQLite, FTS5 and configuration. If `.env` is missing it creates the template and reports missing keys. Preflight checks presence, not provider authentication. `GET /api/health` reports local server readiness, configured model and clock; it does not validate credentials.
 
-If `.env` is absent, `predev` creates it from `.env.example` and reports which keys to fill in. Preflight checks Node, built-in SQLite, FTS5, and configuration without making API calls or spending credits. It checks key presence, not validity. Local tests use explicit non-secret values and a fake provider. Real chat needs a valid LLM credential. Research calls Tavily only when the model requests `web_search`.
+For a production build:
+
+```bash
+npm run build
+npm start
+```
+
+Keep dev dependencies installed: the server entry uses `tsx`. Run one server per database file. The server binds to `127.0.0.1`.
+
+## Configuration
+
+Every supported environment setting is in [.env.example](.env.example). Shell values take precedence over `.env`. Secrets are server-side; never prefix them with `VITE_` or commit them.
+
+- **Required:** `LLM_API_KEY` for the configured model endpoint and `TAVILY_API_KEY` for search.
+- **Model:** `LLM_BASE_URL` defaults to `https://api.openai.com/v1`; `LLM_MODEL` defaults provisionally to `gpt-6-luna`. `LLM_REASONING_EFFORT` is optional (`none`, `low`, `medium`, `high`). The existing compatibility guard applies `none` for Luna tools and rejects Terra's Responses-only tool pairing on this Chat Completions path. Verify actual account/model compatibility with the smoke test; endpoint compatibility alone is insufficient.
+- **Local:** `PORT=5173`, `REPRISE_DB_PATH=./data/reprise.db`, `LOG_LEVEL=info` (`debug`, `warn`, `error` also supported).
+- **Testing only:** `REPRISE_NOW` freezes the clock to an ISO timestamp with offset. Startup and the UI warn when active; leave it unset for real conversations.
+- **Optional evaluations only:** `OPENROUTER_API_KEY`, with explicit endpoint/model/US-provider selection described in the [evaluation guide](evals/README.md).
+
+## Use and inspect
+
+Create or switch conversations in the sidebar. Enter sends, Shift+Enter adds a newline, and Stop or Esc interrupts. Switching conversations disconnects the current stream. Reload retrieves saved history; Retry uses the saved user message and preserves previous attempts. An unacknowledged request is temporarily retained in browser session storage for recovery. Conversation deletion removes its history and evidence after confirmation.
+
+Expand the research summary to see queries, failures and sources. Hover or focus a citation to inspect publication/retrieval dates, historical versus current observations and fixture labels. Dotted citations indicate missing numerical/date tokens; an invalid marker has no registered source. **A numerical check is not semantic verification.** Multiple observations of one URL share a marker and do not identify the supporting date for each claim.
+
+Recall chips open the original message. Supported English dates include `3 November`, `yesterday` and `last Tuesday`; numeric dates such as `3/11` are excluded. Date arithmetic uses the request timezone; stored local dates retain their original timezone interpretation. Ambiguity assumptions and missing-history information go to the model before it answers. A new database has no genuine past conversations.
+
+Seed clearly labelled illustrative history without API calls:
+
+```bash
+npm run seed:demo -- --tz Asia/Kolkata
+# Replace only fixture conversations; preserve other conversations:
+npm run seed:demo -- --tz Asia/Kolkata --reset-fixtures
+```
+
+Seeding adds four conversations (CRM, Postgres hosting, Node/Bun and weekend plans), dated relative to the clock/timezone. It never runs automatically. Repeated seeding refuses duplicates. Reset removes entire fixture conversations, including any later messages added to them. Fixture prices are invented controls, not current vendor facts. Try “On Monday we shortlisted five CRM tools. Has pricing changed since?” and inspect the Demo recall badge; real generation/research requires working keys.
+
+## Verify and evaluate
 
 ```bash
 npm run typecheck
 npm test
 npm run build
-npm start
-```
-
-`npm start` serves the built `dist/` client and the API on the same port. Build first. Keep dev dependencies installed: the planned production entry uses `tsx`.
-
-## Configuration
-
-All variables are documented in [.env.example](.env.example). Shell environment values take precedence over `.env`.
-
-- `LLM_API_KEY`: required server-side LLM credential.
-- `TAVILY_API_KEY`: required server-side search credential.
-- `LLM_BASE_URL`: OpenAI-compatible endpoint; default `https://api.openai.com/v1`.
-- `LLM_MODEL`: `gpt-6-luna` pending the M2 model comparison; live model availability and parameters still need verification with credentials.
-- `LLM_REASONING_EFFORT`: optional `none`, `low`, `medium`, or `high`. Official GPT-6 Luna Chat Completions tools require `none`, applied when unset. Conflicting values are rejected. GPT-6.1 Terra tool calling requires Responses and is incompatible with this Chat Completions architecture.
-- `PORT`: defaults to `5173`; server binds to `127.0.0.1`.
-- `REPRISE_DB_PATH`: defaults to `./data/reprise.db`.
-- `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`; default `info`.
-- `REPRISE_NOW`: optional ISO timestamp with timezone, for tests/evals only. Startup warns when active. Never use for real conversations. The UI shows a warning banner.
-
-## How startup works
-
-`npm run dev` first runs `predev`. Once prerequisites pass, `tsx watch` runs `src/server/main.ts` and restarts it when server files change. One Node HTTP server sends `/api/*` requests through Hono's Node adapter and other requests through Vite middleware. Vite transforms React/TypeScript and provides hot updates through that same server. There is no API proxy or second application port.
-
-Configuration is parsed once with Zod. The clock centralizes real versus frozen time. JSON logs contain operational metadata; credentials and raw conversations must never be passed to the logger.
-
-## Project map
-
-- `src/server/`: HTTP entry, Hono routes, SQLite migrations/repository, turn service, SDK client, streaming runner, configuration, clock, logging.
-- `src/client/`: conversation sidebar, chat thread, composer, validated SSE parser, and reducer.
-- `scripts/preflight.ts`: local run-contract checks.
-- `tests/`: deterministic unit and integration tests; local HTTP fixtures only, no external provider calls.
-- [Master plan](docs/PLAN.md), [decisions](docs/adr/), [glossary](GLOSSARY.md).
-
-## Upcoming milestones
-
-M3 is the current stopping point. M4 requires owner approval; it completes change/recheck evaluations. M5 reliability/UX and M6 submission documentation remain later work.
-
-`npm run eval` runs real-model scenarios when credentials are available; see [evaluation commands and limits](evals/README.md). `npm run eval -- --mock` validates the harness with scripted answers and does not measure model quality. Final `DESIGN.md` and interview notes remain M6 deliverables.
-
-## Demo history and recall
-
-```bash
-npm run seed:demo -- --tz Asia/Kolkata
-# Replace only labelled fixture conversations; preserve live conversations:
-npm run seed:demo -- --tz Asia/Kolkata --reset-fixtures
-```
-
-Seeding is explicit, never part of startup, and needs no API keys. It inserts four conversations: CRM shortlist, Postgres hosting, Node versus Bun, and weekend plans. Dates are relative to the supplied timezone and centralized clock. Fixture titles/messages/sources are labelled as illustrative demo data, not genuine user history or current prices. Repeating the command refuses duplicates unless the targeted reset flag is supplied. Do not add real history to a demo conversation if you want it preserved during fixture reset.
-
-Before the model runs, code resolves English dates and queries stored local dates plus FTS5 keywords across conversations. It retrieves raw user messages, original assistant answers and associated observations. Recall chips link to the original message, with a demo badge for fixtures. Missing records are explicit; the prompt forbids inventing a past answer or using the web to reconstruct a private conversation. Live-model compliance still needs verification.
-
-English dates such as `3 November` are supported; numeric `3/11` dates are deliberately unsupported. A bare weekday means its most recent strictly past occurrence; `last Tuesday` produces two candidates, selected using topic matches and recorded conversations. Later timezone changes do not move stored local dates. Overlarge protected evidence produces a clarification rather than silently dropping user text.
-
-## Privacy and limits
-
-The target is single-user local use, without authentication. History stays in an ignored SQLite file under `data/`. Answer generation sends up to 20 recent messages, a bounded packet of relevant historical turns from other conversations, a conversation index and history-start information to the configured LLM provider. The browser stores the selected conversation id locally and temporarily keeps an unacknowledged request in session storage for safe recovery. Research sends queries to Tavily. The LLM also receives the cited source observations carried from the last two assistant replies (up to eight), plus new search excerpts. There is no telemetry. `.env`, databases, generated evaluation results, and dependency/build directories are ignored by Git.
-
-## M0 verification record
-
-Verified on 11 November 2026:
-
-- Node 26.10.0 / npm 11.19.1: fresh dependency install, `npm run typecheck`, `npm test` (5 files, 20 tests), and `npm run build` passed.
-- A fresh local Git clone passed `npm install` and `npm run dev`; HTTP page and health checks passed using non-secret test values supplied through the shell.
-- Actual Node 24: preflight, server startup/health, and all 20 tests passed. Actual Node 22: preflight exited 1 with the Node upgrade instruction.
-- Missing `.env` creation and missing-key failures passed subprocess integration tests. Missing `TAVILY_API_KEY` produced one actionable line and exit 1.
-- Browser inspection verified the rendered Reprise placeholder and React hot reload. No browser errors were observed.
-- Production smoke: page 200, HTML navigation fallback 200, missing asset 404, `.env` path 404, health 200. The override timestamp and warning were verified.
-- `git diff --check` passed; ignored paths were checked. No credentials were used or committed. Real provider authentication and LLM parameters remain unverified until M1/M2.
-
-The integration follows the official [Vite middleware/HMR configuration](https://vite.dev/config/server-options), [Hono Node adapter](https://github.com/honojs/node-server), [Node SQLite API](https://nodejs.org/api/sqlite.html), and [Node environment loading API](https://nodejs.org/api/process.html#processloadenvfilepath). Installed versions and peer requirements were checked against npm metadata.
-
-Implementation notes: `vitest.config.ts` keeps tests at repository root independently of Vite's client root. Test files added for M0 cover its run and configuration contracts. Only dependencies currently used in M0 are installed; later §Q dependencies will be added with their features. The original master plan is preserved; this session's plain-English commit messages and authorized pushes take precedence over §X.1's older Git instructions.
-
-## Chat behavior and verification
-
-Enter sends, Shift+Enter adds a newline, and Stop or Esc interrupts the answer. Switching chats also disconnects the current stream and saves its partial answer. Reload restores the selected conversation. Retry reuses the latest user message and appends an assistant attempt; it does not duplicate the user row. Deleting a conversation permanently removes its messages and ledger rows after confirmation.
-
-The server migrates the SQLite file automatically. Back it up before any manual repair; corrupt or newer databases are rejected rather than repaired. Run one Reprise server per database file: the active-turn guard belongs to one process.
-
-```bash
-# Requires real LLM credentials; exits nonzero and reports SKIPPED if absent.
-npm run smoke:llm
-
-# Optional production-process regression, after building.
+npm run eval -- --mock
 REPRISE_TEST_PRODUCTION=1 npx vitest run tests/integration/server.test.ts
-
-# Isolated browser fixture: fake provider, /tmp database, no real API calls.
-npx tsx tests/helpers/previewServer.ts
 ```
 
-`npm test` covers SQLite, FTS, duplicate requests, concurrent turns, cancellation, retries, failed writes, SSE parsing, real socket disconnects, and process restarts. The smoke script checks the configured provider separately; passing mock tests does not establish real model compatibility.
+Tests use deterministic and local fake boundaries without external provider calls. The mock runner exercises 23 scripted scenarios (11 P0, 12 P1); it cannot measure model reasoning or conversational quality.
 
-## Research behavior
-
-The model sees exactly one tool: `web_search`. Code enforces three research rounds, five queries per round, ten per turn, eight seconds per search, and a 25-second research deadline. Independent calls run concurrently. After budget exhaustion the model gets one answer-only step. The deadline bounds research, not the subsequent final answer stream. Stop propagates through both search and model requests. Draft text is reset when tool calls begin; only the current answer text is persisted.
-
-Search observations retain their sanitized excerpt, title, canonical HTTP(S) URL, provider publication date when available, retrieval time, and parent search. Citation states check source identity and numerical/date tokens. **Verified means those tokens were found; it does not verify meaning, source quality, or whether a claim is true.** Unknown markers and missing tokens remain visible. Deleting a conversation deletes its sources.
+With valid provider access:
 
 ```bash
-npm run eval -- --mock  # 13 scripted scenarios; validates the harness, not model quality
-npm run eval           # real LLM + frozen replay; reports blocked access explicitly
+npm run smoke:llm
+npm run eval                         # real LLM + checked-in synthetic search replay
+npm run eval -- --live --only C1,D1,F1  # real LLM + real Tavily smoke subset
 ```
 
-Current live constraints: OpenAI/Tavily credentials are absent; the available OpenRouter account returned HTTP 402, and its pinned US endpoint rejected the explicit parallel-call parameter with HTTP 404. There are no measured model scores, live latency/cost measurements, or approved model winner. Never paste credentials into chat or commit them; configure local environment values privately.
+The [evaluation guide](evals/README.md) covers full scenarios, capture/replay, compatible candidate comparisons, cost estimates and human review. Generated reports stay in ignored `evals/results/`. Exit 0 means selected automatic checks passed; 1 means a failure (or skipped smoke); 2 means evaluations were blocked. A live subset is not full P0 acceptance. Recorded-search replay requires actual reviewed captures; checked-in cassettes are synthetic. No default model changes automatically.
+
+## Architecture and limits
+
+One Node process serves React/Vite and the Hono API on one port. Follow `src/server/main.ts` → `app.ts` → `turns/service.ts` → `memory/recall.ts` and `agent/runTurn.ts` → `db/repo.ts`. Shared Zod contracts validate environment, HTTP, tool and streaming boundaries. SQLite stores raw messages, searches, dated observations and citations in transactions. No ORM, embedding service, router or agent framework is required.
+
+Research is limited to three rounds, five queries per round, ten per turn, eight seconds per search and a 25-second research deadline; the final answer stream has a separate provider timeout. Change classifications and no-search decisions are prompted model behavior, not deterministic guarantees. Keyword recall can miss paraphrases; context is bounded; excerpts can omit decisive facts. Refresh interrupts rather than resumes a stream. A hard process crash can lose the in-flight answer/evidence while retaining its saved user question.
+
+This is a single-user local app without authentication. The configured LLM receives recent messages, bounded recalled conversations, an index and source excerpts; Tavily receives search queries. History is local SQLite data, but generation sends that context to the provider. There is no telemetry. Back up the database before manual repair; corrupt/newer databases are rejected. `.env`, local data, builds and generated reports are ignored.
+
+[Interview notes](docs/interview-notes.md), [60-second script](docs/architecture-script.md), [decisions](docs/adr/), [glossary](GLOSSARY.md), [master plan](docs/PLAN.md).
