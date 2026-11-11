@@ -17,7 +17,9 @@
     "eval": "tsx evals/run.ts"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@hono/node-server": "^2.1.6",
+    "date-fns": "^4.4.0",
     "hono": "^4.13.17",
     "openai": "^7.55.0",
     "react": "^19.3.1",

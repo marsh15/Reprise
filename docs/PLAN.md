@@ -887,7 +887,7 @@ Numeric formats such as `3/11` are **not parsed**, because DD/MM vs MM/DD is amb
 - "28 December" → 2025-12-28 (cross-year)
 - "since last week" → from 2026-11-02 to 2026-11-11
 - "yesterday" with `now = 2026-11-11T20:00:00Z` in `Asia/Kolkata` → 2026-11-11, because it is already 12 Nov 01:30 locally (timezone boundary)
-- DST: `now = 2026-11-02T03:30:00Z`, tz `America/New_York`, "yesterday" → 2026-11-01
+- DST: `now = 2026-11-02T03:30:00Z`, tz `America/New_York`, "yesterday" → 2026-10-31 (owner-corrected: the local date is still 1 Nov)
 - "last week" on a Monday
 - "N days ago" across a month boundary
 - Phrases inside longer sentences
@@ -903,7 +903,8 @@ For each resolution with more than one candidate:
 2. Exactly one candidate has a topic match → choose it. The assumption names the alternative: "Tue 3 Nov — the Tuesday we discussed Postgres hosting".
 3. Both have topic matches → choose the most recent. Note the other: "also discussed on Tue 3 Nov".
 4. No topic terms (e.g. "What did I ask last Tuesday?") → choose the most recent candidate *that has any turns*.
-5. No candidate has any turns → `chosen: null`, `note: 'no conversations on 2026-11-10 or 2026-11-03'`. The model then abstains honestly and the index shows the nearest dates.
+5. Topic terms exist but no candidate matches them → choose the most recent candidate with any turns and explicitly note the topic mismatch (owner clarification, M3).
+6. No candidate has any turns → `chosen: null`, `note: 'no conversations on 2026-11-10 or 2026-11-03'`. The model then abstains honestly and the index shows the nearest dates.
 
 The model asks a clarifying question only if the context shows two equally plausible matches *and* the answer would differ. The prompt rule covers this; there's no code for it.
 
@@ -936,7 +937,7 @@ The model asks a clarifying question only if the context shows two equally plaus
    4. per-turn sources down to 3;
    5. assistant text in recalled turns to 1,500 characters.
 
-   **Date-matched user messages are never dropped.**
+   **Date-matched user messages are never dropped.** If protected evidence still exceeds the cap after these trims, ask a focused clarification instead of silently omitting it; leave raw storage intact and explicitly disclose that no matching evidence was supplied (owner clarification, M3).
 
 **Retrieval failure** (DB error) → log it, continue with an empty packet plus `note: 'memory unavailable this turn'`. The prompt says to tell the user if they asked about history.
 
