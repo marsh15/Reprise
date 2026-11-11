@@ -3,6 +3,7 @@ import type { SQLInputValue, StatementSync } from 'node:sqlite';
 import type { Conversation, MessageDTO, TurnStats } from '../../shared/types';
 import type { Evidence, SourceRecord, SearchRecord, CitationRecord } from '../../shared/research';
 import type { Store } from './db';
+import type { RecallItem, RecallPacket } from '../../shared/memory';
 
 type UserInput = { conversationId: string; clientMessageId: string; text: string; timezone: string; now: Date };
 export type StoredMessage = MessageDTO & { conversationId: string; clientMessageId: string | null; timezone: string; meta: string | null };
@@ -19,7 +20,7 @@ export function createRepo(store: Store) {
   function toMessage(row: MessageRow): StoredMessage {
     return { id: row.id, conversationId: row.conversation_id, seq: row.seq, role: row.role,
       content: row.content, status: row.status, createdAt: row.created_at, localDate: row.local_date,
-      timezone: row.tz, replyTo: row.reply_to, clientMessageId: row.client_message_id, meta: row.meta, ...(row.role === 'assistant' ? { evidence: getEvidence(row.id, row.meta) } : {}) };
+      timezone: row.tz, replyTo: row.reply_to, clientMessageId: row.client_message_id, meta: row.meta, ...(row.meta ? { recall: JSON.parse(row.meta).recall } : {}), ...(row.role === 'assistant' ? { evidence: getEvidence(row.id, row.meta) } : {}) };
   }
   function message(query: string, ...params: SQLInputValue[]): StoredMessage | undefined {
     const row = sql(query).get(...params) as MessageRow | undefined;
@@ -29,11 +30,11 @@ export function createRepo(store: Store) {
     COALESCE((SELECT substr(content,1,100) FROM messages WHERE conversation_id=conversations.id ORDER BY seq DESC LIMIT 1),'') AS preview FROM conversations`;
   function getConversation(id: string) { return sql(`${conversationSelect} WHERE id=?`).get(id) as Conversation | undefined; }
   function touchConversation(id: string, now: Date) { sql('UPDATE conversations SET updated_at=? WHERE id=?').run(now.toISOString(), id); }
-  function createConversation(text: string, now: Date) {
+  function createConversation(text: string, now: Date, origin: 'live' | 'fixture' = 'live') {
     const id = randomUUID();
     let title = text.replace(/\s+/g, ' ').trim();
     if (title.length > 60) title = (title.slice(0, 60).replace(/\s+\S*$/, '') || title.slice(0, 60)) + '…';
-    sql('INSERT INTO conversations(id,title,created_at,updated_at) VALUES(?,?,?,?)').run(id, title, now.toISOString(), now.toISOString());
+    sql('INSERT INTO conversations(id,title,origin,created_at,updated_at) VALUES(?,?,?,?,?)').run(id, title, origin, now.toISOString(), now.toISOString());
     return getConversation(id)!;
   }
   function insertMessage(input: { id: string; conversationId: string; role: MessageDTO['role']; text: string; status: MessageDTO['status']; timezone: string; now: Date; replyTo?: string; clientMessageId?: string; meta?: string }) {
@@ -74,7 +75,7 @@ export function createRepo(store: Store) {
     for (const citation of evidence.citations) sql('INSERT INTO citations(message_id,marker,source_id,state,detail) VALUES(?,?,?,?,?)')
       .run(id, citation.marker, citation.sourceId, citation.state, citation.detail);
   }
-  function carriedSources(messages: StoredMessage[]): SourceRecord[] {
+  function carriedSources(messages: MessageDTO[]): SourceRecord[] {
     const assistants = messages.filter(message => message.role === 'assistant').slice(-2);
     const sources = assistants.flatMap(message => {
       const cited = new Set(message.evidence?.citations.filter(c => c.sourceId !== null).map(c => c.marker));
@@ -82,21 +83,79 @@ export function createRepo(store: Store) {
     });
     return [...new Map(sources.map(source => [source.sourceId, source])).values()].slice(-8);
   }
+  function turn(id: string) {
+    const user = getMessage(id)!;
+    return { user, assistant: getReply(id) ?? null, conversation: getConversation(user.conversationId)! };
+  }
+  function findTurnsByLocalDates(ranges: { from: string; to: string }[], excludeUserId = '') {
+    if (!ranges.length) return [];
+    const where = ranges.map(() => '(local_date BETWEEN ? AND ?)').join(' OR ');
+    const rows = sql(`SELECT id FROM messages WHERE role='user' AND id<>? AND (${where}) ORDER BY created_at,conversation_id,seq,id`)
+      .all(excludeUserId, ...ranges.flatMap(r => [r.from, r.to])) as { id: string }[];
+    return rows.map(row => turn(row.id));
+  }
+  function ftsTurns(query: string, options: { ranges?: { from: string; to: string }[]; excludeIds?: string[]; limit?: number; recent?: boolean } = {}) {
+    const ranges = options.ranges ?? [];
+    const exclude = options.excludeIds ?? [];
+    const dateFilter = ranges.length ? `AND (${ranges.map(() => '(u.local_date BETWEEN ? AND ?)').join(' OR ')})` : '';
+    const excluded = exclude.length ? `AND u.id NOT IN (${exclude.map(() => '?').join(',')})` : '';
+    const rows = sql(`WITH hits AS MATERIALIZED (
+      SELECT CASE WHEN m.role='user' THEN m.id ELSE m.reply_to END AS user_id, bm25(messages_fts) AS score
+      FROM messages_fts JOIN messages m ON m.rowid_alias=messages_fts.rowid WHERE messages_fts MATCH ?
+      AND (m.role='user' OR m.id=(SELECT id FROM messages WHERE reply_to=m.reply_to ORDER BY seq DESC LIMIT 1)))
+      SELECT u.id, MIN(h.score) AS score FROM hits h JOIN messages u ON u.id=h.user_id
+      WHERE 1=1 ${dateFilter} ${excluded} GROUP BY u.id
+      ORDER BY ${options.recent ? '' : 'score,'} u.created_at DESC,u.conversation_id,u.seq DESC,u.id LIMIT ?`)
+      .all(query, ...ranges.flatMap(r => [r.from, r.to]), ...exclude, options.limit ?? 4) as { id: string }[];
+    return rows.map(row => turn(row.id));
+  }
+  function getSourcesForMessages(ids: string[], perMessage: number, citedOnly = false) {
+    return ids.map(id => {
+      const evidence = getMessage(id)?.evidence;
+      const cited = new Set(evidence?.citations.filter(c => c.sourceId).map(c => c.marker));
+      return (evidence?.sources ?? []).filter(s => !citedOnly || cited.has(s.n))
+        .sort((a, b) => Number(cited.has(b.n)) - Number(cited.has(a.n)) || a.rank - b.rank || a.sourceId.localeCompare(b.sourceId)).slice(0, perMessage);
+    });
+  }
+  function conversationIndex(limit: number): RecallPacket['index'] {
+    return sql(`SELECT c.id AS conversationId,c.title,c.origin,MIN(m.local_date) AS firstLocalDate,COUNT(*) AS turns
+      FROM conversations c JOIN messages m ON m.conversation_id=c.id AND m.role='user'
+      GROUP BY c.id ORDER BY c.updated_at DESC,c.id LIMIT ?`).all(limit) as RecallPacket['index'];
+  }
+  function seedFixtures(fixtures: { title: string; user: string; assistant: string; now: Date; timezone: string; sources: { url: string; title: string; excerpt: string }[] }[], reset = false) {
+    return store.transaction(() => {
+      const existing = sql("SELECT id FROM conversations WHERE origin='fixture'").all();
+      if (existing.length && !reset) throw new Error('Demo fixtures already exist. Use --reset-fixtures to replace only demo conversations.');
+      if (reset) sql("DELETE FROM conversations WHERE origin='fixture'").run();
+      return fixtures.map(fixture => {
+        const conversation = createConversation(fixture.title, fixture.now, 'fixture');
+        const user = insertMessage({ id: randomUUID(), conversationId: conversation.id, role: 'user', text: fixture.user, status: 'complete', timezone: fixture.timezone, now: fixture.now, clientMessageId: randomUUID() });
+        const searches: SearchRecord[] = fixture.sources.map(source => ({ id: randomUUID(), round: 1, query: `[Demo fixture] ${source.title}`, freshness: 'any', startedAt: fixture.now.toISOString(), durationMs: 0, status: 'ok' }));
+        const sources: SourceRecord[] = fixture.sources.map((source, i) => ({ ...source, sourceId: randomUUID(), searchId: searches[i].id, rank: 1, n: i+1, publishedAt: null, retrievedAt: fixture.now.toISOString(), fixture: true }));
+        const assistant = insertMessage({ id: randomUUID(), conversationId: conversation.id, role: 'assistant', text: fixture.assistant, status: 'complete', timezone: fixture.timezone, now: fixture.now, replyTo: user.id,
+          meta: JSON.stringify({ model: 'demo-fixture', sourceRefs: sources.map(({ sourceId, n }) => ({ sourceId, n })) }) });
+        saveEvidence(assistant.id, { searches, sources, citations: sources.map(source => ({ marker: source.n, sourceId: source.sourceId, state: 'unchecked', detail: 'Illustrative demo fixture; not live verification.' })) });
+        return getConversation(conversation.id)!;
+      });
+    });
+  }
   return {
     createConversation, getConversation, touchConversation,
-    startConversation: (input: Omit<UserInput, 'conversationId'>) => store.transaction(() => {
-      const conversation = createConversation(input.text, input.now);
+    startConversation: (input: Omit<UserInput, 'conversationId'> & { origin?: 'live' | 'fixture' }) => store.transaction(() => {
+      const conversation = createConversation(input.text, input.now, input.origin);
       return insertMessage({ ...input, conversationId: conversation.id, id: randomUUID(), role: 'user', status: 'complete' });
     }),
     listConversations: () => sql(`${conversationSelect} ORDER BY updated_at DESC, id`).all() as Conversation[],
     deleteConversation: (id: string) => store.transaction(() => sql('DELETE FROM conversations WHERE id=?').run(id).changes > 0),
     getMessage, findClientMessage, getReply, getConversationMessages, carriedSources,
+    findTurnsByLocalDates, ftsTurns, getSourcesForMessages, conversationIndex, seedFixtures,
+    ftsTurnsOnDates: (query: string, ranges: { from: string; to: string }[], excludeIds: string[] = []) => ftsTurns(query, { ranges, excludeIds, limit: -1 }),
     historyStart: () => (sql("SELECT MIN(local_date) AS date FROM messages").get() as {date: string | null}).date,
     insertUserMessage: (input: UserInput) => store.transaction(() => findClientMessage(input.clientMessageId) ?? insertMessage({ ...input, id: randomUUID(), role: 'user', status: 'complete' })),
-    insertAssistantTurn: (input: { id: string; user: StoredMessage; text: string; status: MessageDTO['status']; now: Date; model: string; stats: TurnStats; evidence?: Evidence }) => store.transaction(() => {
+    insertAssistantTurn: (input: { id: string; user: StoredMessage; text: string; status: MessageDTO['status']; now: Date; model: string; stats: TurnStats; evidence?: Evidence; recall?: RecallItem[]; assumptions?: unknown }) => store.transaction(() => {
       insertMessage({ id: input.id, conversationId: input.user.conversationId, role: 'assistant', text: input.text,
         status: input.status, timezone: input.user.timezone, now: input.now, replyTo: input.user.id,
-        meta: JSON.stringify({ model: input.model, ...input.stats,
+        meta: JSON.stringify({ model: input.model, ...input.stats, recall: input.recall, assumptions: input.assumptions,
           sourceRefs: input.evidence?.sources.map(({ sourceId, n }) => ({ sourceId, n })) ?? [] }),
       });
       if (input.evidence) saveEvidence(input.id, input.evidence);

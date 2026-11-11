@@ -16,6 +16,7 @@ export function chatReducer(state: ChatState, action: Action): ChatState {
           if (!messages.some(m => m.id === event.assistantMessageId)) messages.push({ id: event.assistantMessageId, role: 'assistant', content: '', status: 'complete', createdAt: new Date().toISOString(), localDate: '', seq: messages.length + 1, replyTo: event.userMessageId });
           return { ...state, messages, assistantId: event.assistantMessageId };
         }
+        case 'recall': return { ...state, messages: state.messages.map(message => message.id === state.assistantId ? { ...message, recall: event.items } : message) };
         case 'search.started':
         case 'search.finished':
         case 'citations': return { ...state, messages: state.messages.map(message => {

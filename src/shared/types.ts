@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recallItemSchema, resolutionSchema } from './memory';
 import { evidenceSchema, searchRecordSchema, sourceSchema, citationSchema } from './research';
 
 export const turnRequestSchema = z.object({
@@ -17,7 +18,7 @@ export type TurnStats = z.infer<typeof statsSchema>;
 export const messageSchema = z.object({
   id: z.uuid(), role: z.enum(['user', 'assistant']), content: z.string(),
   status: z.enum(['complete', 'interrupted', 'failed']), createdAt: z.string(),
-  evidence: evidenceSchema.optional(), localDate: z.string(), seq: z.number().int(), replyTo: z.string().nullable(),
+  evidence: evidenceSchema.optional(), recall: z.array(recallItemSchema).optional(), localDate: z.string(), seq: z.number().int(), replyTo: z.string().nullable(),
 });
 export type MessageDTO = z.infer<typeof messageSchema>;
 export const conversationSchema = z.object({
@@ -31,6 +32,7 @@ export const errorSchema = z.object({ error: z.object({ code: z.string(), messag
 // Shared, validated transport contract for the implemented milestones.
 export const turnEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('turn.started'), conversationId: z.uuid(), userMessageId: z.uuid(), assistantMessageId: z.uuid(), traceId: z.uuid() }),
+  z.object({ type: z.literal('recall'), items: z.array(recallItemSchema), resolutions: z.array(resolutionSchema) }),
   z.object({ type: z.literal('search.started'), searches: z.array(searchRecordSchema) }),
   z.object({ type: z.literal('search.finished'), search: searchRecordSchema, sources: z.array(sourceSchema) }),
   z.object({ type: z.literal('citations'), citations: z.array(citationSchema), sources: z.array(sourceSchema).optional() }),

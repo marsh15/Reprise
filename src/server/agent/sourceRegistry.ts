@@ -6,6 +6,8 @@ export function createSourceRegistry(initial: SourceRecord[] = []) {
   const numbers = new Map<string, number>();
   const sources: SourceRecord[] = [];
   function register(source: Omit<SourceRecord, 'n'>): SourceRecord {
+    const existing = sources.find(s => s.sourceId === source.sourceId);
+    if (existing) return existing;
     const url = normalizeUrl(source.url);
     if (!url) throw new Error('Unsafe source URL');
     const n = numbers.get(url) ?? numbers.size + 1;

@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Emit, TurnRequest, TurnStats } from '../../shared/types';
 import type { Clock } from '../clock';
 import type { Repo, StoredMessage } from '../db/repo';
+import { recall } from '../memory/recall';
+import { recallItems } from '../../shared/memory';
 import type { RunTurn } from '../agent/runTurn';
 
 export class TurnError extends Error {
@@ -61,10 +63,12 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
         };
         try {
           await send({ type: 'turn.started', conversationId: user.conversationId, userMessageId: user.id, assistantMessageId, traceId });
-          const history = repo.getConversationMessages(user.conversationId, 20, user.id);
-          const result = await runTurn({ messages: history, signal: controller.signal, emit: send, timezone: input.timezone, historyStart: repo.historyStart(), carriedSources: repo.carriedSources(history) });
+          const packet = recall(repo, { text: user.content, conversationId: user.conversationId, userMessageId: user.id, now: clock.now(), tz: input.timezone });
+          const items = recallItems(packet);
+          await send({ type: 'recall', items, resolutions: packet.resolutions });
+          const result = await runTurn({ messages: [...packet.currentConversation, user], packet, signal: controller.signal, emit: send, timezone: input.timezone, historyStart: packet.historyStart, carriedSources: packet.carriedSources });
           if (controller.signal.aborted) result.status = 'interrupted';
-          repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, now: clock.now(), model });
+          repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, recall: items, assumptions: packet.resolutions, now: clock.now(), model });
           if (result.evidence) await send({ type: 'citations', citations: result.evidence.citations, sources: result.evidence.sources });
           // Cancellation via endpoint keeps SSE connected, so its terminal event still reaches the client.
           const terminal = result.status === 'complete'
