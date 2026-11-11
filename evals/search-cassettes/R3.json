@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Adversarial synthetic control; no real vendor observation. No query or freshness fallback.",
+  "entries": {
+    "aster current pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://aster.example/pricing",
+          "title": "[Synthetic] Aster pricing",
+          "content": "[Synthetic evaluation evidence] Aster standard monthly price $25 on 2026-11-11. No historical price or effective change date is established.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 10
+    }
+  }
+}

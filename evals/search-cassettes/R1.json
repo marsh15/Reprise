@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Adversarial synthetic control; no real vendor observation. No query or freshness fallback.",
+  "entries": {
+    "orchid current stable release|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://orchid.example/releases",
+          "title": "[Synthetic] Orchid releases, older snapshot",
+          "content": "[Synthetic evaluation evidence] As of 2026-07-01 the latest stable Orchid is 7.9.",
+          "publishedAt": "2026-07-01",
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://orchid.example/release/8.2",
+          "title": "[Synthetic] Orchid official stable release",
+          "content": "[Synthetic evaluation evidence] Released 2026-11-10: Orchid 8.2 is the new stable release, superseding 7.9.",
+          "publishedAt": "2026-11-10",
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 10
+    }
+  }
+}

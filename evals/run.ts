@@ -9,6 +9,7 @@ import { chatToolParameters } from '../src/server/llm/client';
 import { cassetteSearch } from './cassettes';
 import { evaluationLlm } from './provider';
 import { scenarios } from './scenarios';
+import { correctnessScenarios } from './correctnessScenarios';
 import { executeScenario, implementationHash, type EvaluationRow } from './execute';
 import { buildReport, markdownReport, type Mode } from './report';
 
@@ -19,7 +20,8 @@ const mock = args.includes('--mock'); const record = args.includes('--record'); 
 const mode: Mode = mock ? 'mock' : live ? 'live' : record ? 'record' : 'replay';
 const model = option('--model') || process.env.LLM_MODEL || 'gpt-6-luna';
 const baseURL = option('--base-url') || process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
-const selected = scenarios.filter(s => !option('--only') || option('--only')!.split(',').includes(s.id));
+const available = [...scenarios, ...correctnessScenarios];
+const selected = option('--only') ? available.filter(s => option('--only')!.split(',').includes(s.id)) : scenarios;
 const rows: EvaluationRow[] = []; let blocked: string | null = null; let provider = mock ? 'mock' : 'unconfigured';
 let codeHash = '';
 try {
@@ -31,7 +33,7 @@ try {
     i++;
   }
   if ([mock, record, live].filter(Boolean).length > 1) throw new Error('--mock, --record and --live are separate modes');
-  if (option('--only')?.split(',').some(id => !scenarios.some(s => s.id === id))) throw new Error('Unknown scenario ID; no scenarios executed');
+  if (option('--only')?.split(',').some(id => !available.some(s => s.id === id))) throw new Error('Unknown scenario ID; no scenarios executed');
   if (!selected.length) throw new Error('No matching scenarios selected');
   const endpoint = new URL(baseURL);
   if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error('Use an endpoint URL without credentials, query or fragment');

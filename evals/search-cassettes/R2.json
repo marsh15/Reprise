@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Adversarial synthetic control; no real vendor observation. No query or freshness fallback.",
+  "entries": {
+    "aster pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://aster.example/pricing",
+          "title": "[Synthetic] Aster pricing",
+          "content": "[Synthetic evaluation evidence] Aster standard subscription costs $25 monthly, flat USD.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 10
+    },
+    "birch pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://birch.example/pricing",
+          "title": "[Synthetic] Birch pricing",
+          "content": "[Synthetic evaluation evidence] Birch standard subscription costs $35 monthly, flat USD.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 10
+    },
+    "cedar pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://cedar.example/pricing",
+          "title": "[Synthetic] Cedar pricing",
+          "content": "[Synthetic evaluation evidence] Cedar standard subscription costs $25 monthly, flat USD.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 10
+    }
+  }
+}
