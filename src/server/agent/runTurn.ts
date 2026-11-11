@@ -1,5 +1,5 @@
 import type OpenAI from 'openai';
-import type { ChatCompletionChunk, ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type { Emit, MessageDTO, TurnStats } from '../../shared/types';
 import type { Config } from '../config';
 
@@ -27,7 +27,7 @@ export function createRunTurn(llm: Llm, config: Config): RunTurn {
       let finished = false;
       for await (const chunk of stream) {
         signal.throwIfAborted();
-        const choice = (chunk as ChatCompletionChunk).choices[0];
+        const choice = chunk.choices[0];
         if (choice?.delta.tool_calls?.length) throw new Error('Unexpected tool call with tools disabled.');
         if (choice?.delta.content) {
           stats.ttftMs ??= Math.round(performance.now() - started);

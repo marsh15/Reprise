@@ -15,12 +15,14 @@ export function createRepo(store: Store) {
     if (!statement) { statement = store.db.prepare(query); statements.set(query, statement); }
     return statement;
   }
-  function message(query: string, ...params: SQLInputValue[]): StoredMessage | undefined {
-    const row = sql(query).get(...params) as MessageRow | undefined;
-    if (!row) return;
+  function toMessage(row: MessageRow): StoredMessage {
     return { id: row.id, conversationId: row.conversation_id, seq: row.seq, role: row.role,
       content: row.content, status: row.status, createdAt: row.created_at, localDate: row.local_date,
       timezone: row.tz, replyTo: row.reply_to, clientMessageId: row.client_message_id, meta: row.meta };
+  }
+  function message(query: string, ...params: SQLInputValue[]): StoredMessage | undefined {
+    const row = sql(query).get(...params) as MessageRow | undefined;
+    return row && toMessage(row);
   }
   const conversationSelect = `SELECT id, title, origin, created_at AS createdAt, updated_at AS updatedAt,
     COALESCE((SELECT substr(content,1,100) FROM messages WHERE conversation_id=conversations.id ORDER BY seq DESC LIMIT 1),'') AS preview FROM conversations`;
@@ -46,11 +48,11 @@ export function createRepo(store: Store) {
   function findClientMessage(id: string) { return message('SELECT * FROM messages WHERE client_message_id=?', id); }
   function getReply(id: string) { return message('SELECT * FROM messages WHERE reply_to=? ORDER BY seq DESC LIMIT 1', id); }
   function getConversationMessages(id: string, limit?: number, excludeRepliesTo?: string): StoredMessage[] {
-    const rows = sql('SELECT id FROM messages WHERE conversation_id=? AND (reply_to IS NULL OR reply_to<>?) ORDER BY seq DESC LIMIT ?').all(id, excludeRepliesTo ?? '', limit ?? -1) as { id: string }[];
-    return rows.reverse().map(row => getMessage(row.id)!);
+    const rows = sql('SELECT * FROM messages WHERE conversation_id=? AND (reply_to IS NULL OR reply_to<>?) ORDER BY seq DESC LIMIT ?').all(id, excludeRepliesTo ?? '', limit ?? -1) as MessageRow[];
+    return rows.reverse().map(toMessage);
   }
   return {
-    transaction: store.transaction, createConversation, getConversation, touchConversation,
+    createConversation, getConversation, touchConversation,
     startConversation: (input: Omit<UserInput, 'conversationId'>) => store.transaction(() => {
       const conversation = createConversation(input.text, input.now);
       return insertMessage({ ...input, conversationId: conversation.id, id: randomUUID(), role: 'user', status: 'complete' });
