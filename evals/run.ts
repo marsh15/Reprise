@@ -57,7 +57,7 @@ try {
       }
       let result!: TurnResult; let memory!: RecallPacket;
       const run = createRunTurn(llmForTurn, config, { search: cassette.search, now: clock.now });
-      const service = createTurnService(repo, async input => { memory = input.packet!; result = await run(input); return result; }, clock, model);
+      const service = createTurnService(repo, async input => { memory = input.packet; result = await run(input); return result; }, clock, model);
       const turn = service.prepare({ conversationId, clientMessageId: randomUUID(), text: scenario.text, timezone: 'Asia/Kolkata' });
       await turn.run(async () => {});
       await cassette.flush();

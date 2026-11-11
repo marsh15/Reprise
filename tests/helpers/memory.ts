@@ -1,3 +1,5 @@
+import type { MessageDTO } from '../../src/shared/types';
+import type { RecallPacket } from '../../src/shared/memory';
 import { randomUUID } from 'node:crypto';
 import type { Repo } from '../../src/server/db/repo';
 import type { SourceRecord } from '../../src/shared/research';
@@ -13,4 +15,8 @@ export function pastTurn(repo: Repo, text: string, date = '2026-11-03', options:
 }
 export function historicalSource(url = 'https://example.com/old', excerpt = 'Old price $90'): SourceRecord {
   return { sourceId: randomUUID(), searchId: randomUUID(), n: 1, rank: 1, url, title: 'Historical source', excerpt, publishedAt: null, retrievedAt: '2026-11-03T08:00:00.000Z', fixture: false };
+}
+
+export function emptyPacket(messages: MessageDTO[] = []): RecallPacket {
+  return { nowLocal: 'Wed 11 Nov 2026, 14:00 (Asia/Kolkata)', historyStart: null, resolutions: [], recalledTurns: [], index: [], currentConversation: messages, carriedSources: [], notes: [], clarification: null };
 }

@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type { Emit, MessageDTO, TurnStats } from '../../shared/types';
-import type { Evidence, Search, SourceRecord } from '../../shared/research';
+import type { Evidence, Search } from '../../shared/research';
 import { clipHistoricalText } from '../memory/context';
 import type { RecallPacket } from '../../shared/memory';
 import type { Config } from '../config';
@@ -17,8 +17,7 @@ import { researchRound, type ResearchBudget } from './researchRound';
 
 export type Llm = Pick<OpenAI, 'chat'>;
 export type TurnResult = { text: string; status: MessageDTO['status']; stats: TurnStats; evidence?: Evidence; error?: string };
-export type RunTurn = (input: { messages: MessageDTO[]; signal: AbortSignal; emit: Emit;
-  timezone?: string; historyStart?: string | null; carriedSources?: SourceRecord[]; packet?: RecallPacket }) => Promise<TurnResult>;
+export type RunTurn = (input: { packet: RecallPacket; userText: string; signal: AbortSignal; emit: Emit }) => Promise<TurnResult>;
 const FINAL_NOTE = 'Research budget reached. Answer now using the evidence above; say clearly what you could not verify.';
 export function createRunTurn(llm: Llm, config: Config, options: {
   search?: Search; now?: () => Date; budget?: Partial<ResearchBudget>;
@@ -27,12 +26,9 @@ export function createRunTurn(llm: Llm, config: Config, options: {
   const search = options.search ?? createSearchWeb(config.TAVILY_API_KEY);
   const now = options.now ?? createClock(config.REPRISE_NOW).now;
   const budget = { ...BUDGET, ...options.budget };
-  return async ({ messages, signal, emit, timezone = 'UTC', historyStart = null, carriedSources = [], packet }) => {
+  return async ({ packet: memory, userText, signal, emit }) => {
     const started = performance.now();
     const stats: TurnStats = { searches: 0, sources: 0, latencyMs: 0, ttftMs: null, inputTokens: 0, outputTokens: 0, usageComplete: true, modelCalls: 0, toolCalls: 0, invalidToolCalls: 0 };
-    const userText = messages.at(-1)?.content ?? '';
-    const memory: RecallPacket = packet ?? { nowLocal: new Intl.DateTimeFormat('en-GB', { timeZone: timezone, dateStyle: 'full', timeStyle: 'long' }).format(now()) + ` (${timezone})`,
-      historyStart, resolutions: [], recalledTurns: [], index: [], currentConversation: messages.slice(0, -1), carriedSources, notes: [], clarification: null };
     const initialSources = [...memory.recalledTurns.flatMap(t => t.sources), ...memory.carriedSources];
     const registry = createSourceRegistry(initialSources.map(source => ({ ...source, excerpt: clipHistoricalText(source.excerpt, 600) })));
     const evidence: Evidence = { searches: [], sources: registry.sources, citations: [] };
@@ -40,7 +36,7 @@ export function createRunTurn(llm: Llm, config: Config, options: {
     const researchSignal = AbortSignal.any([signal, AbortSignal.timeout(budget.researchDeadlineMs)]);
     const recalledIds = new Set(memory.recalledTurns.flatMap(t => [t.userMessage.id, ...(t.assistantMessage ? [t.assistantMessage.id] : [])]));
     const recent = memory.currentConversation.filter(message => !recalledIds.has(message.id));
-    const context: ChatCompletionMessageParam[] = assembleMessages([...recent, messages.at(-1)!], buildContextBlock(memory, registry.sources, userText));
+    const context: ChatCompletionMessageParam[] = assembleMessages(recent, userText, buildContextBlock(memory, registry.sources, userText));
     let text = ''; let errorCode: string | undefined; let status: MessageDTO['status'] = 'complete';
     try {
       if (memory.clarification) { text = memory.clarification; await emit({ type: 'answer.delta', text }); }

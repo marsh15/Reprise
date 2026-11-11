@@ -1,7 +1,5 @@
 import type { MessageDTO } from "../../shared/types";
-import type { SourceRecord } from "../../shared/research";
-import type { RecallPacket } from "../../shared/memory";
-import { renderRecallContext } from "../memory/context";
+export { renderRecallContext as buildContextBlock } from "../memory/context";
 
 export const SYSTEM_PROMPT = `You are Reprise, a chat assistant with web search and a memory of past conversations with this user.
 
@@ -49,12 +47,8 @@ When tools fail
 - Citation numbers in original assistant messages are historical. Each recalled source gives its historicalMarker and its current n; use current n when citing it.
 - Citation numbers in previous messages are historical. In this answer use only the source numbers supplied for this turn.`;
 
-export function buildContextBlock(packet: RecallPacket, sources: SourceRecord[], userText: string): string {
-  return renderRecallContext(packet, sources, userText);
-}
-export function assembleMessages(messages: MessageDTO[], context: string) {
-  const latest = messages.at(-1);
+export function assembleMessages(messages: MessageDTO[], userText: string, context: string) {
   return [{ role: 'system' as const, content: SYSTEM_PROMPT },
-    ...messages.slice(0, -1).map(({ role, content }) => ({ role, content })),
-    { role: 'user' as const, content: context + '\n\n<user_message>\n' + (latest?.content ?? '') + '\n</user_message>' }];
+    ...messages.map(({ role, content }) => ({ role, content })),
+    { role: 'user' as const, content: context + '\n\n<user_message>\n' + userText + '\n</user_message>' }];
 }

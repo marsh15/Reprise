@@ -109,11 +109,11 @@ export function createRepo(store: Store) {
       .all(query, ...ranges.flatMap(r => [r.from, r.to]), ...exclude, options.limit ?? 4) as { id: string }[];
     return rows.map(row => turn(row.id));
   }
-  function getSourcesForMessages(ids: string[], perMessage: number, citedOnly = false) {
+  function getSourcesForMessages(ids: string[], perMessage: number) {
     return ids.map(id => {
       const evidence = getMessage(id)?.evidence;
       const cited = new Set(evidence?.citations.filter(c => c.sourceId).map(c => c.marker));
-      return (evidence?.sources ?? []).filter(s => !citedOnly || cited.has(s.n))
+      return (evidence?.sources ?? [])
         .sort((a, b) => Number(cited.has(b.n)) - Number(cited.has(a.n)) || a.rank - b.rank || a.n - b.n || a.sourceId.localeCompare(b.sourceId)).slice(0, perMessage);
     });
   }

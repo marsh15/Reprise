@@ -15,8 +15,8 @@ const clock = createClock('2026-11-11T08:30:00Z');
 const store = openDatabase(':memory:'); const repo = createRepo(store);
 seedDemo(repo, clock.now(), 'Asia/Kolkata');
 const turns = createTurnService(repo, input => {
-  const research = /changed|current/i.test(input.messages.at(-1)?.content ?? '');
-  const freshMarker = new Set([...(input.packet?.recalledTurns.flatMap(t => t.sources) ?? []), ...(input.packet?.carriedSources ?? [])].map(s => s.url)).size + 1;
+  const research = /changed|current/i.test(input.userText);
+  const freshMarker = new Set([...(input.packet.recalledTurns.flatMap(t => t.sources) ?? []), ...(input.packet.carriedSources ?? [])].map(s => s.url)).size + 1;
   const fake = scriptedLlm(research ? [{ calls: [{ args: '{"query":"pricing","freshness":"any"}' }] },
     { text: [`Demo history is recorded on 3 November. Current illustrative evidence: $95 [${freshMarker}].`], delay: 80 }]
     : [{ text: ['Using the demo conversation on Tue 3 Nov: the recorded Postgres options were Neon, Supabase, RDS and Railway.'], delay: 80 }]);

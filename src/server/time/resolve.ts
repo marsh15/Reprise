@@ -1,5 +1,10 @@
 import { TZDate } from '@date-fns/tz';
-import { addDays, format, startOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { addDays } from 'date-fns/addDays';
+import { format } from 'date-fns/format';
+import { startOfWeek } from 'date-fns/startOfWeek';
+import { startOfMonth } from 'date-fns/startOfMonth';
+import { endOfMonth } from 'date-fns/endOfMonth';
+import { subMonths } from 'date-fns/subMonths';
 
 export type DateCandidate = { from: string; to: string; label: string };
 export type DateResolution = {

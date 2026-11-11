@@ -1,3 +1,4 @@
+import { emptyPacket } from '../helpers/memory';
 import { expect, it } from 'vitest';
 import { createRunTurn } from '../../src/server/agent/runTurn';
 import { parseConfig } from '../../src/server/config';
@@ -10,7 +11,7 @@ const messages = [{ id: 'user', role: 'user' as const, content: 'Current pricing
 const call = (query: string) => ({ args: JSON.stringify({ query, freshness: 'any' }) });
 async function run(steps: ScriptedStep[], search: Search = fakeSearch().search, extra: Parameters<typeof createRunTurn>[2] = {}, controller = new AbortController(), onEvent?: (e: TurnEvent) => void) {
   const fake = scriptedLlm(steps); const events: TurnEvent[] = [];
-  const result = await createRunTurn(fake.llm, config, { search, ...extra })({ messages, signal: controller.signal,
+  const result = await createRunTurn(fake.llm, config, { search, ...extra })({ packet: emptyPacket(messages.slice(0, -1)), userText: messages.at(-1)!.content, signal: controller.signal,
     emit: async e => { events.push(e); onEvent?.(e); } });
   return { result, events, requests: fake.requests };
 }

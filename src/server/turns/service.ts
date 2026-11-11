@@ -66,7 +66,7 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
           const packet = recall(repo, { text: user.content, conversationId: user.conversationId, userMessageId: user.id, now: clock.now(), tz: input.timezone });
           const items = recallItems(packet);
           await send({ type: 'recall', items, resolutions: packet.resolutions });
-          const result = await runTurn({ messages: [...packet.currentConversation, user], packet, signal: controller.signal, emit: send, timezone: input.timezone, historyStart: packet.historyStart, carriedSources: packet.carriedSources });
+          const result = await runTurn({ packet, userText: user.content, signal: controller.signal, emit: send });
           if (controller.signal.aborted) result.status = 'interrupted';
           repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, recall: items, assumptions: packet.resolutions, now: clock.now(), model });
           if (result.evidence) await send({ type: 'citations', citations: result.evidence.citations, sources: result.evidence.sources });
