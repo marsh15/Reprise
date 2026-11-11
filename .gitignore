@@ -8,3 +8,5 @@ evals/results/
 coverage/
 *.tsbuildinfo
 .DS_Store
+
+.playwright-cli/
