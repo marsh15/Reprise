@@ -1550,6 +1550,8 @@ Helper column legend:
 
 ### M5: Hardening and UX polish (~3 h)
 
+**Status (11 November 2026):** M5 implementation and offline verification complete; see [M5-CHECKPOINT.md](M5-CHECKPOINT.md) for the failure-matrix audit, browser/accessibility checks and remaining limitations. M2/M4 live-provider acceptance and model selection remain submission blockers. M6 has not started and requires owner approval.
+
 **Work:**
 
 - Walk the §M matrix and add any missing handling or tests.
