@@ -36,6 +36,8 @@ it('escapes control delimiters without rewriting raw messages and maps historica
 });
 it('does not add a recheck hint without an actual recalled answer', () => {
   expect(renderRecallContext(packet(), [], 'Has anything changed since then?')).not.toContain('task_hint');
+  const p = packet(); const t = turn('topic'); t.assistantMessage = null; p.recalledTurns = [t];
+  expect(renderRecallContext(p, [], 'Is your answer still correct?')).not.toContain('task_hint');
 });
 it('also bounds a request containing too many date-resolution records', () => {
   const p = packet(); p.resolutions = Array.from({ length: 1000 }, () => ({ phrase: 'today', chosen: null, alternatives: [], assumption: null, note: 'No conversations on this date.' }));
@@ -50,4 +52,13 @@ it('associates recent assistant status and original markers with the supplied ca
   const parsed = JSON.parse(context.slice('<context>\n'.length, -'\n</context>'.length));
   expect(parsed.recent_message_metadata[0]).toMatchObject({ status: 'interrupted', localDate: '2026-11-03', source_refs: [{ sourceId: source.sourceId, historicalMarker: 8, n: 1 }] });
   expect(context).not.toContain('Partial $90'); // Raw content is already in the plain chat messages.
+  const recheck = renderRecallContext(p, [{ ...source, n: 1 }], 'Is that still accurate?');
+  expect(recheck).toContain('task_hint'); expect(recheck).toContain('incomplete answer');
 });
+it.each(['Is it still correct?', 'Recheck your recommendation', 'Has anything changed?', 'Is your previous answer accurate?'])(
+  'hints current-chat rechecking without requiring a separately recalled turn: %s', text => {
+    const p = packet(); p.currentConversation = [{ id: randomUUID(), role: 'assistant', content: 'A prior answer without sources.', status: 'complete',
+      localDate: '2026-11-03', createdAt: '2026-11-03T08:00:00Z', seq: 2, replyTo: null }];
+    expect(renderRecallContext(p, [], text)).toContain('task_hint');
+    expect(renderRecallContext(p, [], 'What did you say?')).not.toContain('task_hint');
+  });

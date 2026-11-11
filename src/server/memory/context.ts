@@ -2,6 +2,11 @@ import type { RecallPacket } from '../../shared/memory';
 import type { SourceRecord } from '../../shared/research';
 
 export const clipHistoricalText = (text: string, limit: number) => text.length > limit ? text.slice(0, limit - 12) + ' [truncated]' : text;
+export function isHistoricalRecheck(packet: RecallPacket, text: string): boolean {
+  const hasAnswer = packet.recalledTurns.some(turn => turn.assistantMessage?.content.trim())
+    || packet.currentConversation.some(message => message.role === 'assistant' && message.content.trim());
+  return hasAnswer && /\b(still (correct|true|accurate|valid)|changed?|since|any (updates?|news)|up to date|outdated|recheck|re-check|(?:previous|earlier|your|old) answer (?:correct|accurate))\b/i.test(text);
+}
 export function renderRecallContext(packet: RecallPacket, sources: SourceRecord[], userText: string): string {
   const observation = (source: SourceRecord) => ({ n: sources.find(s => s.sourceId === source.sourceId)?.n ?? 999999,
     sourceId: source.sourceId, historicalMarker: source.n, title: source.title, url: source.url, published: source.publishedAt,
@@ -18,8 +23,8 @@ export function renderRecallContext(packet: RecallPacket, sources: SourceRecord[
     })),
     recalled: packet.recalledTurns.map(turn => ({ ...turn, sources: turn.sources.map(observation) })),
     conversation_index: packet.index, carried_sources: packet.carriedSources.map(observation),
-    ...(packet.recalledTurns.length && /\b(still (correct|true|accurate|valid)|changed?|since|any (updates?|news)|up to date|outdated)\b/i.test(userText)
-      ? { task_hint: 'verify the checkable claims from the recalled turn(s) against current sources before answering.' } : {}),
+    ...(isHistoricalRecheck(packet, userText)
+      ? { task_hint: 'verify the checkable claims from the relevant recorded answer against current sources before answering; keep historical observations separate from current evidence. An incomplete answer or missing historical source is not a verified baseline.' } : {}),
   };
   // JSON escaping keeps original text intact while preventing data from closing the context delimiter.
   return '<context>\n' + JSON.stringify(context).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e') + '\n</context>';
