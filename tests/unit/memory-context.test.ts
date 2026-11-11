@@ -37,3 +37,8 @@ it('escapes control delimiters without rewriting raw messages and maps historica
 it('does not add a recheck hint without an actual recalled answer', () => {
   expect(renderRecallContext(packet(), [], 'Has anything changed since then?')).not.toContain('task_hint');
 });
+it('also bounds a request containing too many date-resolution records', () => {
+  const p = packet(); p.resolutions = Array.from({ length: 1000 }, () => ({ phrase: 'today', chosen: null, alternatives: [], assumption: null, note: 'No conversations on this date.' }));
+  boundRecallPacket(p, 'today');
+  expect(p.clarification).toBeTruthy(); expect(renderRecallContext(p, [], 'today').length).toBeLessThanOrEqual(24000);
+});

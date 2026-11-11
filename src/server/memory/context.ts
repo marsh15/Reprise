@@ -35,7 +35,7 @@ export function boundRecallPacket(packet: RecallPacket, userText: string) {
     // The owner chose clarification over silently dropping protected date-matched user evidence.
     packet.clarification = 'The matching history is too large to include accurately, so I have not included those records in this answer. Please narrow the date range or name the topic or conversation.';
     packet.notes.push('Protected evidence exceeds the context budget; no historical evidence supplied. Raw messages remain stored unchanged.');
-    packet.recalledTurns = []; packet.carriedSources = []; packet.index = [];
+    packet.recalledTurns = []; packet.carriedSources = []; packet.index = []; packet.resolutions = [];
   }
   return packet;
 }

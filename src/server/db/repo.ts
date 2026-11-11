@@ -114,7 +114,7 @@ export function createRepo(store: Store) {
       const evidence = getMessage(id)?.evidence;
       const cited = new Set(evidence?.citations.filter(c => c.sourceId).map(c => c.marker));
       return (evidence?.sources ?? []).filter(s => !citedOnly || cited.has(s.n))
-        .sort((a, b) => Number(cited.has(b.n)) - Number(cited.has(a.n)) || a.rank - b.rank || a.sourceId.localeCompare(b.sourceId)).slice(0, perMessage);
+        .sort((a, b) => Number(cited.has(b.n)) - Number(cited.has(a.n)) || a.rank - b.rank || a.n - b.n || a.sourceId.localeCompare(b.sourceId)).slice(0, perMessage);
     });
   }
   function conversationIndex(limit: number): RecallPacket['index'] {

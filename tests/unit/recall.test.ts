@@ -115,3 +115,37 @@ it('drops dates/meta words, keeps two-letter uppercase acronyms, caps and dedupl
   expect(topicTerms('What did I ask last Tuesday 3 November about AI DB AI?')).toEqual(['ai', 'db']);
   expect(topicTerms('one two three four five six seven eight nine')).toHaveLength(8);
 });
+it('keeps BM25 selection bounded and breaks equal-rank ties by recency', () => {
+  pastTurn(repo, 'Postgres host', '2026-11-03', { answer: 'Short answer.' });
+  pastTurn(repo, 'Postgres host', '2026-11-10', { answer: 'Short answer.' });
+  expect(repo.ftsTurns('"postgres"')[0].user.localDate).toBe('2026-11-10');
+  for (let i=0; i<6; i++) pastTurn(repo, 'Postgres host', `2026-10-${String(10+i).padStart(2,'0')}`, { answer: 'Short answer.' });
+  expect(read('Postgres host').recalledTurns).toHaveLength(4);
+});
+it('bounds the recent window, conversation index and cited carry, independent of other chats', () => {
+  const first = pastTurn(repo, 'First topic');
+  for (let i=0; i<12; i++) pastTurn(repo, `Topic ${i}`, '2026-11-03', { conversationId: first.user.conversationId, sources: [historicalSource('https://example.com/' + i)] });
+  for (let i=0; i<32; i++) pastTurn(repo, `Other ${i}`, '2026-11-04');
+  const packet = read('Hello', first.user.conversationId);
+  expect(packet.currentConversation).toHaveLength(20); expect(packet.index).toHaveLength(30);
+  expect(packet.carriedSources).toHaveLength(2); expect(packet.index.every(c => c.turns >= 1)).toBe(true);
+});
+it('prioritizes cited historical sources, caps at six, and uses stable original-marker ordering', () => {
+  const sources = Array.from({ length: 8 }, (_, i) => ({ ...historicalSource(`https://example.com/${i}`), n: i+1 }));
+  const t = pastTurn(repo, 'Postgres sources', undefined, { sources });
+  store.db.prepare('DELETE FROM citations WHERE message_id=? AND marker<>8').run(t.assistant.id);
+  const selected = repo.getSourcesForMessages([t.assistant.id], 6)[0];
+  expect(selected).toHaveLength(6); expect(selected.map(s => s.n)).toEqual([8,1,2,3,4,5]);
+});
+it('does not substitute another date\'s topic match for an absent requested date', () => {
+  pastTurn(repo, 'Postgres hosting', '2026-11-09');
+  const packet = read('Last Tuesday Postgres hosting?');
+  expect(packet.resolutions[0].chosen).toBeNull(); expect(packet.recalledTurns[0].userMessage.localDate).toBe('2026-11-09');
+  expect(packet.recalledTurns[0].reason).toBe('topic');
+});
+it('pairs only the latest assistant attempt and does not retrieve an older failed attempt as the answer', () => {
+  const t = pastTurn(repo, 'Postgres hosting', undefined, { answer: 'Old failedattemptword.' });
+  repo.insertAssistantTurn({ id: randomUUID(), user: t.user, text: 'Actual latest answer.', status: 'interrupted', now, model: 'test', stats: { searches: 0, sources: 0, latencyMs: 0, ttftMs: null, inputTokens: 0, outputTokens: 0 } });
+  expect(repo.ftsTurns('"failedattemptword"')).toEqual([]);
+  const packet = read('Postgres'); expect(packet.recalledTurns[0].assistantMessage).toMatchObject({ content: 'Actual latest answer.', status: 'interrupted' });
+});

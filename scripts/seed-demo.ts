@@ -22,9 +22,9 @@ export function seedDemo(repo: Repo, now: Date, tz: string, reset = false) {
   const third = new TZDate(local.getFullYear(), local.getMonth(), 3, 10, 0, 0, tz);
   const dates = { crm: day('on Monday'), postgres: resolveDates('last Tuesday', now, tz)[0].candidates[1].from,
     node: third.getDate() < local.getDate() ? day('3 ' + new Intl.DateTimeFormat('en', { timeZone: tz, month: 'long' }).format(now)) : day('8 days ago'), weekend: day('yesterday') };
-  return repo.seedFixtures(data.map(fixture => {
+  return repo.seedFixtures(data.map((fixture, index) => {
     const [year, month, date] = dates[fixture.key].split('-').map(Number);
-    return { ...fixture, timezone: tz, now: new TZDate(year, month - 1, date, 10, 0, 0, tz) };
+    return { ...fixture, timezone: tz, now: new TZDate(year, month - 1, date, 10, 0, index, tz) };
   }), reset);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

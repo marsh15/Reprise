@@ -18,3 +18,8 @@ it('assigns carried sources first, normalizes URLs and rejects unsafe addresses'
   expect(carried.n).toBe(7);
   expect(() => registry.register(observation('javascript:x', 'bad'))).toThrow('Unsafe');
 });
+it('deduplicates the same immutable observation recalled and carried in one turn', () => {
+  const source = { ...observation('https://example.com/old', '$90'), n: 8 };
+  const registry = createSourceRegistry([source, source]);
+  expect(registry.sources).toHaveLength(1); expect(registry.entries.get(1)?.text).toBe('$90');
+});
