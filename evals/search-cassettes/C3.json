@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored test evidence. All vendor values and events are invented for evaluation, not real observations.",
+  "entries": {
+    "neon launch backup retention plan|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://neon.com/docs/introduction/plans",
+          "title": "[Synthetic fixture] Neon backup retention",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Neon Launch includes 1 day of backup retention; Scale includes 30 days. The same limits applied on 2026-11-03. No change in retention policy is documented.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

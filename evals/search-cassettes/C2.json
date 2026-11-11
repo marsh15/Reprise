@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored test evidence. All vendor values and events are invented for evaluation, not real observations.",
+  "entries": {
+    "postgres hosting pricing plans units|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://neon.com/pricing",
+          "title": "[Synthetic fixture] Neon pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Neon Launch USD $19 per project per month starting charge; compute and storage usage may add cost.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://supabase.com/pricing",
+          "title": "[Synthetic fixture] Supabase pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Supabase Pro USD $25 per project per month starting charge; additional compute and storage usage may add cost.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://aws.amazon.com/rds/postgresql/pricing/",
+          "title": "[Synthetic fixture] Amazon RDS pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Amazon RDS PostgreSQL example on-demand compute USD $18 per instance per month; storage and network billed separately. Region and instance size matter.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://railway.com/pricing",
+          "title": "[Synthetic fixture] Railway pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Railway Hobby USD $5 per workspace per month plus metered resource usage. Not equivalent to per-project or per-instance packages.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

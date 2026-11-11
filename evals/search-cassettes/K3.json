@@ -1,0 +1,8 @@
+{
+  "version": 1, "provenance": "synthetic",
+  "note": "Synthetic demo data only; no real observations. Frozen 2026-11-11T08:30:00Z.",
+  "entries": { "cedar and dune subscription pricing billing terms|any": { "status": "ok", "durationMs": 12, "results": [
+    { "url": "https://example.com/cedar-pricing", "title": "[Demo] Cedar pricing", "content": "[Synthetic fixture, no real observation] Cedar introductory rate $10 per user per month equivalent billed annually; standard rate $15 per user per month equivalent billed annually.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true },
+    { "url": "https://example.com/dune-pricing", "title": "[Demo] Dune pricing", "content": "[Synthetic fixture, no real observation] Dune costs $40 per month flat, monthly billing, minimum 5 seats.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true }
+  ] } }
+}

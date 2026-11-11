@@ -9,11 +9,17 @@ export const cassetteSchema = z.object({
   entries: z.record(z.string(), searchOutcomeSchema),
 });
 export async function cassetteSearch(path: string, options: { record?: Search; live?: Search } = {}) {
+  if (options.record && options.live) throw new Error('Choose recording or live search, not both');
   let cassette: z.infer<typeof cassetteSchema>;
-  try { cassette = cassetteSchema.parse(JSON.parse(await readFile(path, 'utf8'))); }
+  try { cassette = options.live ? { version: 1, provenance: 'recorded', note: 'Unrecorded live search', entries: {} }
+    : cassetteSchema.parse(JSON.parse(await readFile(path, 'utf8'))); }
   catch (error) {
     if (!options.record || !(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
     cassette = { version: 1, provenance: 'recorded', note: 'Live Tavily capture', entries: {} };
+  }
+  for (const key of Object.keys(cassette.entries)) {
+    const separator = key.lastIndexOf('|');
+    if (separator < 0 || key.slice(0, separator) !== normalizeQuery(key.slice(0, separator))) throw new Error('Cassette keys must use normalized query|freshness');
   }
   const misses: string[] = []; const queries: string[] = [];
   const search: Search = async (request, signal) => {
@@ -32,7 +38,7 @@ export async function cassetteSearch(path: string, options: { record?: Search; l
     cassette.entries[key] = recorded;
     return recorded;
   };
-  return { search, misses, queries, flush: async () => {
+  return { search, misses, queries, get snapshot() { return structuredClone(cassette); }, flush: async () => {
     if (!options.record) return;
     cassette.provenance = Object.values(cassette.entries).some(entry => entry.results.some(result => result.fixture)) ? 'mixed' : 'recorded'; cassette.note = 'Recorded Tavily outcomes. Retrieval times are capture times, not replay times.';
     await mkdir(dirname(path), { recursive: true });

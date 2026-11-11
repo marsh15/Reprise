@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored test evidence. All vendor values and events are invented for evaluation, not real observations.",
+  "entries": {
+    "hubspot sales hub starter pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://www.hubspot.com/products/sales/pricing",
+          "title": "[Synthetic fixture] HubSpot pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] HubSpot Sales Hub Starter standard USD $24 per seat per month, monthly billing. Annual commitment has different terms. No historical price or effective change date is provided.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    },
+    "pipedrive essential pricing change|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://www.pipedrive.com/en/pricing",
+          "title": "[Synthetic fixture] Pipedrive change notice",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Pipedrive Essential standard USD per seat monthly billing increased from $15 to $18 effective 2026-11-10. Applies to new and renewing customers; same plan packaging. Notice published 2026-11-09.",
+          "publishedAt": "2026-11-09",
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    },
+    "zoho crm standard pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://www.zoho.com/crm/zohocrm-pricing.html",
+          "title": "[Synthetic fixture] Zoho pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Zoho CRM Standard USD $14 per seat per month. No dated change notice; billing commitment is not specified in this excerpt.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    },
+    "salesforce starter suite pricing release|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://www.salesforce.com/sales/pricing/",
+          "title": "[Synthetic fixture] Salesforce pricing and announcement",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Salesforce Starter Suite standard USD $25 per seat per month, monthly billing. A reporting feature was announced 2026-11-10; availability is planned for 2026-12-01 for eligible accounts. This announcement is not evidence of current availability.",
+          "publishedAt": "2026-11-10",
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    },
+    "close startup standard pricing|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://www.close.com/pricing",
+          "title": "[Synthetic fixture] Close standard pricing",
+          "content": "[Synthetic evaluation fixture \u2014 no live vendor observation] Close Startup standard USD $59 per seat per month, monthly billing, no introductory discount. Prior promotional terms and packaging are not documented. No dated price change is stated.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

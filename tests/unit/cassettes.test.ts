@@ -1,4 +1,4 @@
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
@@ -12,6 +12,22 @@ it('replays frozen synthetic evidence and reports exact query misses without fal
   expect((await cassette.search({ query: 'Node.js latest LTS version', freshness: 'any' }, new AbortController().signal)).results[0].content).not.toBe('mutated');
   expect((await cassette.search({ query: 'different', freshness: 'any' }, new AbortController().signal)).error).toBe('cassette_miss');
   expect(cassette.misses).toEqual(['different|any']);
+});
+it('rejects non-normalized fixture keys immediately instead of silently missing every query', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'reprise-cassette-')); const path = join(dir, 'bad.json');
+  try {
+    await writeFile(path, JSON.stringify({ version: 1, provenance: 'synthetic', note: 'test', entries: { 'UPPER|any': { status: 'empty', results: [], durationMs: 0 } } }));
+    await expect(cassetteSearch(path)).rejects.toThrow('normalized');
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+it('runs live search without requiring a frozen cassette file and never writes one', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'reprise-live-')); const path = join(dir, 'missing.json');
+  try {
+    const live = fakeSearch(); const cassette = await cassetteSearch(path, { live: live.search });
+    await cassette.search({ query: 'test live transport with a fake', freshness: 'any' }, new AbortController().signal);
+    expect(live.calls).toHaveLength(1); await cassette.flush();
+    await expect(readFile(path, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 it('records to a new path, strips secrets by persisting only outcomes, and preserves capture time on replay', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'reprise-cassette-')); const path = join(dir, 'new.json');

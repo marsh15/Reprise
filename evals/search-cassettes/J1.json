@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored demo fixture; no real observations or pricing claims. Frozen at 2026-11-11T08:30:00Z.",
+  "entries": {
+    "hubspot sales hub and pipedrive crm pricing per seat billing|any": {
+      "status": "ok",
+      "results": [
+        { "url": "https://www.hubspot.com/pricing/sales", "title": "[Demo] HubSpot pricing", "content": "[Synthetic fixture, no real observation] HubSpot Sales Hub illustrative price $20 per seat monthly.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true },
+        { "url": "https://www.pipedrive.com/en/pricing", "title": "[Demo] Pipedrive pricing", "content": "[Synthetic fixture, no real observation] Pipedrive illustrative price $15 per seat per month billed annually.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true }
+      ],
+      "durationMs": 12
+    }
+  }
+}

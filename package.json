@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "smoke:llm": "tsx scripts/smoke-llm.ts",
     "eval": "tsx evals/run.ts",
+    "eval:compare": "tsx evals/compare.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {

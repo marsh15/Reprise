@@ -7,7 +7,8 @@
       "input": 0.1,
       "output": 0.5,
       "source": "https://developers.openai.com/api/docs/models/gpt-6-luna",
-      "checkedOn": "2026-11-11"
+      "checkedOn": "2026-11-11",
+      "baseURL": "https://api.openai.com/v1"
     },
     {
       "model": "gpt-6.1-terra",
@@ -15,7 +16,8 @@
       "input": 1,
       "output": 5,
       "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra",
-      "checkedOn": "2026-11-11"
+      "checkedOn": "2026-11-11",
+      "baseURL": "https://api.openai.com/v1"
     },
     {
       "model": "deepseek/deepseek-v4.1-flash",
@@ -23,7 +25,8 @@
       "input": 0.45,
       "output": 1.8,
       "checkedOn": "2026-11-11",
-      "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints"
+      "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints",
+      "baseURL": "https://openrouter.ai/api/v1"
     }
   ]
 }

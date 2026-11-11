@@ -1,0 +1,8 @@
+{
+  "version": 1, "provenance": "synthetic",
+  "note": "Synthetic demo data only, no real observations. Frozen 2026-11-11T08:30:00Z; no exchange rate supplied.",
+  "entries": { "aster and birch subscription pricing currencies|any": { "status": "ok", "durationMs": 12, "results": [
+    { "url": "https://example.com/aster-pricing", "title": "[Demo] Aster pricing", "content": "[Synthetic fixture, no real observation] Aster costs $20 USD per month.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true },
+    { "url": "https://example.com/birch-pricing", "title": "[Demo] Birch pricing", "content": "[Synthetic fixture, no real observation] Birch costs €18 EUR per month.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true }
+  ] } }
+}

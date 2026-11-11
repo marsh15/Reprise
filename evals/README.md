@@ -1,41 +1,110 @@
-# Reprise evaluations
+# Reprise evaluations — M4
 
-This is the M3 evaluation runner. It runs the application turn service, real OpenAI SDK, bounded loop, in-memory SQLite ledger and citation checker. Pass/fail uses deterministic assertions, never an LLM judge. Generated transcripts and reports stay in ignored `evals/results/`.
+The runner exercises the real application turn service, in-memory SQLite, raw recall, bounded single-tool agent, source ledger, cancellation and deterministic citation checker. Assertions never call an LLM judge. Reports and captures belong under ignored `evals/results/`.
 
-```bash
-npm run eval                       # real configured LLM + frozen search replay
-npm run eval -- --mock             # scripted fake LLM + synthetic cassettes; harness validation only
-npm run eval -- --model gpt-6-luna
-npm run eval -- --model gpt-6.1-terra # incompatible: official docs require Responses tools
-npm run eval -- --base-url https://openrouter.ai/api/v1 --model deepseek/deepseek-v4.1-flash --provider fireworks/us
-npm run eval -- --live --only D1,F1 # actual Tavily; requires both keys
-npm run eval -- --record --cassette-dir /tmp/reprise-capture --only D1
-# Freeze that capture directory, review it, then replay identical files for each model:
-npm run eval -- --cassette-dir /tmp/reprise-capture --only D1 --model gpt-6-luna
-```
+## Evidence layers
 
-`--only` accepts comma-separated scenario IDs. Exit 0 means selected assertions passed; 1 means scenario failures; 2 means blocked configuration/provider access. An HTTP-rejected turn is **untested**, excluded from model pass rates, and stops the run to avoid repeated blocked requests. Missing credentials also produce an explicit blocked report.
+Keep these results separate:
 
-D1, E1, E2, F1, I1, I2, L1, G1 and K1 cover M2. E1 starts with a frozen prior explanation to test no-search rephrasing. A1/B1/F2/H1 now exercise temporal recall and fixtures; F1 continues to test fresh-install abstention. These five M3 scenarios run in both mock and real-model modes. B2/C1/C2/C3/H2/J1 remain scenario work for M4, while ambiguity, corrections and source handling already have deterministic M3 tests. The complete P0 bake-off must be repeated after M3/M4 adds those scenarios.
+1. **Unit tests:** deterministic code and controlled boundary tests under `tests/unit/`.
+2. **Mock integration:** scripted SDK responses plus synthetic search evidence, including actual HTTP/server/process tests. `npm run eval -- --mock` exercises the scenario harness. These passes do not establish that a model searches, resolves entities, resists injection, compares prices or reasons correctly.
+3. **Live LLM with replay:** real generation against frozen inputs. `synthetic_search_live_llm`, `recorded_search_live_llm` and `mixed_search_live_llm` are distinct report categories. Checked-in cassettes are synthetic, never recorded vendor observations. No-search scenarios do not turn a recorded-search run into a mixed one.
+4. **Fully live:** real LLM and Tavily. Historical scenario records remain labelled fixtures; they are not genuine user history. Capture/retrieval time remains actual, even though the scenario clock is frozen.
+5. **Human review:** inspect transcripts, claims and source excerpts for semantic support and conversational quality. Every report leaves this pending. An automatic pass does not complete this review.
 
-The checked-in cassettes are **hand-authored synthetic fixtures**, including Node's illustrative version, injection, conflict and billing examples. They are not recorded web observations. Result excerpts and source flags label them. There are no recorded live cassettes in this checkpoint. `--record` calls actual Tavily and writes only validated, sanitized outcomes, preserving capture timestamps on replay. It requires a separate output directory so frozen inputs cannot be overwritten accidentally. Mixed captures retain per-result fixture labels and are labelled mixed.
+M4 currently has no successful real-model run, recorded Tavily observations or fully live research result. See [M4 checkpoint](../docs/M4-CHECKPOINT.md).
 
-Cassette keys are normalized query + freshness. A miss produces `cassette_miss`, never live fallback or invented evidence, and fails the scenario. Research scenarios include a fixed query in their user input so models receive reproducible excerpts despite query paraphrasing. This isolates tool use and grounded synthesis; it does **not** measure unconstrained query quality. Model prompts and production behavior contain no evaluation answers or scenario branches. SHA-256 input hashes cover each user input, prior messages, demo fixture JSON and cassette bytes. JSON reports also retain the actual recall packet for inspection.
-
-The clock is frozen at 2026-11-11T08:30Z, Asia/Kolkata. Synthetic source retrieval times are explicitly frozen; recorded source retrieval times remain the real capture time. Each scenario uses a fresh in-memory database. `--mock` scripts define fake behavior, so their passes and artificial timings are not model evidence and have no price/latency score.
-
-Real reports include scenario failures and transcripts, median final-answer TTFT, median total latency, aggregate token usage, model/tool call counts, invalid calls and duplicate queries. Cost estimates use usage × the exact model/provider price in `prices.json`, ignore caching discounts, and exclude search credits. Missing/incomplete usage or unconfirmed pricing yields unknown, never zero. Treat published rates as estimates of cost, not a billing receipt; recheck before another bake-off. No successful live measurements were obtained in M2.
-
-OpenRouter evaluation requests are pinned to an explicit `/us` endpoint, with fallback disabled and `require_parameters: true`. `fireworks/us` is listed by its official endpoints API. The explicit parallel-call parameter is omitted from normal DeepSeek requests after the strict smoke probe returned 404; concurrent call generation on that endpoint remains unverified. No alternate model or geographic endpoint is substituted. OpenRouter keys are used only by evaluation/smoke scripts, not written to reports or passed to the client.
-
-Default choice stays with the owner: highest P0 pass rate, then lower median total latency, then lower cost. No winner can be selected from the current blocked results. See [M2 checkpoint](../docs/M2-CHECKPOINT.md) and §N.4 of the [plan](../docs/PLAN.md).
-
-M3 verification commands:
+## Run and reproduce
 
 ```bash
-npm run eval -- --mock --only A1,B1,F1,F2,H1
-npm run eval -- --only A1,B1,F1,F2,H1
-npx tsx tests/helpers/memoryPreview.ts # isolated browser fixture; no real providers
+npm run typecheck
+npm test
+npm run build
+npm run eval -- --mock
+npm run eval -- --mock --only C1,C2,C3,J1,K2,K3,T1
+npm run eval                         # real configured LLM + checked-in synthetic replay
+npm run eval -- --only C1,D1,F1
+npm run eval -- --live --only C1,D1,F1
 ```
 
-The M3 checkpoint has 13 passing mock scenarios. `npm run eval` exits 2 with `LLM_API_KEY absent`; no live M3 score or model-honesty result is claimed. Historical fixture observations and synthetic current-search cassettes are separately timestamped and labelled. M2's live-provider acceptance and bake-off remain outstanding. See [M3 checkpoint](../docs/M3-CHECKPOINT.md).
+The scenario clock is `2026-11-11T08:30:00Z`, Asia/Kolkata. Each scenario gets a fresh in-memory database. `--only` accepts comma-separated IDs and rejects unknown IDs. Different modes cannot be combined. Exit 0 means selected assertions passed; 1 means scenario failures; 2 means configuration/provider/cassette access blocked. An HTTP-rejected turn is **untested**, excluded from rates and model timing/cost, and stops the run. Other stream/protocol failures are failed scenarios to inspect, not silently discarded.
+
+`--output-prefix evals/results/luna` writes `luna.json` and `luna.md`; choose a fresh prefix to retain a run. Generated filenames have unique suffixes otherwise. Reports retain the actual question, answer, recall packet, model request bodies, stream events, tool calls/results, queries, source observations, citations, warnings and failure messages. Request headers, API keys and raw provider error bodies are never captured.
+
+Each row has an input hash and a cassette hash. The implementation hash covers server/shared code, evaluation definitions/assertions/setup, fixture and test-helper inputs, and the package/lock files. It excludes `.env` and generated results. Random database/observation IDs do not determine input hashes. The cassette hash covers its parsed frozen payload, including provenance and observation times. Model parameters and any provider routing appear in request traces. Keep the same implementation, scenario selection and capture directory for each candidate.
+
+Research prompts specify exact queries to make replay reproducible. This measures tool use and synthesis given controlled evidence, **not unconstrained search-query quality**. A normalized `query|freshness` miss fails visibly; replay never falls back to live search. Invalid/non-normalized cassette keys fail before generation. Do not add aliases that quietly change the evidence returned.
+
+## Capture actual search evidence
+
+Configure `LLM_API_KEY` for the explicit OpenAI endpoint/model, and `TAVILY_API_KEY`, privately in the local ignored `.env`. OpenRouter evaluations instead use `OPENROUTER_API_KEY` and an explicit base URL/US provider. Never put keys in shell commands, reports, Git or chat. The injected config placeholders inside the harness never authenticate a provider request; the real client and search adapter use only their intended environment credentials.
+
+```bash
+npm run smoke:llm
+npm run eval -- --record --cassette-dir evals/results/capture --only C1,D1,F1
+# Review and freeze the captures, then use them unchanged for every candidate:
+npm run eval -- --cassette-dir evals/results/capture --only C1,D1,F1 --model gpt-6-luna
+```
+
+Recording requires a separate directory; canonical paths also reject a symlink back to checked-in cassettes. It calls real Tavily and persists sanitized outcomes with capture timestamps. Replay preserves them. Live mode needs no cassette file and writes no capture. Mixed inputs remain labelled mixed.
+
+Several controlled tests intentionally use fictional services or injected conflicts/failures. Arbitrary live replacements may not satisfy those fixture assumptions. Review any recorded replacement and its assertions before using it as benchmark evidence; freeze both before comparing models. C1's requirements for the specific four synthetic verdicts apply only to synthetic fresh evidence; real pages are never required to demonstrate a change that did not occur. Core coverage, search, disclosure and citation checks still apply. A partial C1/D1/F1 capture is a smoke corpus, not the full acceptance suite. A full replay can use frozen synthetic controls alongside reviewed recordings, but its category is then mixed, not fully recorded-search.
+
+## Coverage and assertion limits
+
+All 19 §N.2 scenarios are implemented, plus J2, K2, K3 and T1: **11 P0 + 12 P1 = 23**.
+
+| IDs | Coverage |
+|---|---|
+| A1, B1, B2 | Continuity; all turns on a date; topic missing on an otherwise recorded date |
+| C1 | Five CRM products; original source observations; independent searches; verified change, observed difference, no established change and uncertainty in controlled evidence |
+| C2 | Postgres recommendation without original sources; current units/usage; no invented baseline |
+| C3 | Earlier answer contradicted by its own historical source; original error versus later change |
+| D1, E1, E2 | Current information; no-search rephrasing and arithmetic |
+| F1, F2 | Missing-history abstention; current research without inventing a past discussion |
+| G1, H1, H2 | Conflicting sources; memory-aware Tuesday ambiguity and alternative dates |
+| I1, I2 | Timed-out and malformed searches; completed response with disclosed verification limits |
+| J1, J2 | Follow-up product identity for seat comparisons; later user correction |
+| K1, K2, K3 | Monthly versus annual billing; currency mismatch; per-user versus flat rates, minimum seats, introductory versus standard terms |
+| L1, T1 | Untrusted search injection; discussion/publication/retrieval/rollout dates and announcement versus availability |
+
+Assertions are visible in `scenarios.ts`, `memoryScenarios.ts`, `recheckScenarios.ts`, `followupScenarios.ts`, `pricingScenarios.ts` and `assertions.ts`. They check status, search counts, recall content/date selection, names, explicit disclosures, selected misleading patterns and citation ledger states. Focused negative tests reject selected wrong answers. They do not prove every sentence, entity attribution, price normalization or source interpretation. The dated-change pattern guard is deliberately narrow (especially for date phrasing); it is not a semantic verifier. Expected fixture prices/events are not hardcoded in production.
+
+The citation checker validates marker existence and numerical/date token presence. A matching number in a different plan, or across multiple observations sharing a marker, can pass. An unsupported nonnumeric sentence may remain unchecked. Derived totals may be flagged if an excerpt lacks that computed value. Review calculations, units and supporting excerpts manually; never interpret `verified` as factual verification.
+
+## Reports and costs
+
+JSON is machine readable; Markdown contains a summary table, questions, transcripts, queries, citations, warnings, hashes and failure explanations. Full traces and the evidence ledger live in the companion JSON. P0/P1 rates have separate planned/attempted/passed counts; untested IDs remain explicit. Full-suite automated targets cannot be asserted from a subset, mock run or provider-blocked run. Human review and owner model approval remain separate gates even when automatic targets pass.
+
+Each scenario has final-answer TTFT, total agent latency, input/output tokens, estimated USD, measured USD and the price basis. Missing usage or an exact model/provider/base-URL rate yields **unknown**, not zero. Mock measurements are null; raw scripted stats remain only in the trace/result. Aggregate timings use completed eligible turns. Raw rejected-request duration is retained for debugging but never presented as model response performance.
+
+Costs use provider token usage × dated rates in `prices.json`, ignore cache discounts and search credits, and are estimates, not measured bills. The current rate table is inherited from M2; no new billing measurement or pricing validation occurred in M4. `measuredUsd` remains null. No model-cost metric can be inferred from the successful mocks.
+
+## Pending model bake-off
+
+Keep the provisional default unchanged until owner approval. Planned candidates only:
+
+- `gpt-6-luna` at the explicit OpenAI endpoint, with `LLM_API_KEY`.
+- `gpt-6.1-terra` at OpenAI, with the same credential prerequisite. The existing Chat Completions capability guard rejects its documented Responses-only tool path. This remains an explicit mismatch, not a reason to substitute a model or migrate architecture.
+- `deepseek/deepseek-v4.1-flash` at OpenRouter, pinned to `fireworks/us`, with usable `OPENROUTER_API_KEY` credits. Fallback is disabled. The inherited explicit-parallel-parameter omission remains documented in M2; generation of parallel calls is unverified.
+
+After credentials, smoke each genuinely available candidate before spending a full-suite run. The owner can explicitly omit an unavailable candidate; document why. Do not repeat the currently blocked credit request.
+
+```bash
+npm run smoke:llm -- --model gpt-6-luna --base-url https://api.openai.com/v1
+npm run smoke:llm -- --model gpt-6.1-terra --base-url https://api.openai.com/v1
+npm run smoke:llm -- --model deepseek/deepseek-v4.1-flash --base-url https://openrouter.ai/api/v1 --provider fireworks/us
+# Use identical frozen inputs for every available compatible candidate:
+npm run eval -- --model gpt-6-luna --base-url https://api.openai.com/v1 --output-prefix evals/results/luna
+npm run eval -- --model deepseek/deepseek-v4.1-flash --base-url https://openrouter.ai/api/v1 --provider fireworks/us --output-prefix evals/results/deepseek
+npm run eval:compare -- evals/results/luna.json evals/results/deepseek.json
+npm run eval -- --live --only C1,D1,F1
+```
+
+To use reviewed recordings, add the same `--cassette-dir` to **both** full-suite replay commands. The comparison tool rejects mocked, blocked, incomplete, duplicate or unplanned candidates and different implementation/scenario/cassette hashes. It outputs ignored JSON and Markdown comparisons without changing any configuration. Do not use it on the two currently blocked reports.
+
+Choose highest P0 rate, then lower median total latency, then lower estimated cost. Missing tie-break metrics leave a tie unresolved. Report P1, TTFT, tokens, cost basis, tool reliability and citation integrity too. Human reviewers assess memory/temporal correctness, price comparability, claim support and conversational quality from full traces. No automatic LLM judge is used. Present the evidence and request owner approval of a winner; these commands never select the default.
+
+## Debug a failure
+
+Reproduce with `--only ID` using the identical cassette directory/model/options. Inspect JSON requests, recalled raw question/answer and original source timestamps, tool calls, actual queries/results, stream events and final citation associations. Classify the first failing step: recall/context, date resolution, tool decision/query, insufficient/conflicting evidence, model reasoning, citation mismatch, prompt, bad assertion/fixture, provider compatibility, or timeout/budget. Fix the narrow cause, rerun that case and relevant regressions, then simplify. A provider-blocked turn has no model-quality result.
