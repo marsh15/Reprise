@@ -1,0 +1,17 @@
+.recall-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0.4rem 0.5rem 0;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #c5c5c5;
+  border-radius: 1rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.recall-chip:focus-visible, .message.recall-highlight:focus-visible { outline: 2px solid #5575a2; outline-offset: 2px; }
+.recall-demo { font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
+.message.recall-highlight { outline: 2px solid #a2b9d8; outline-offset: 4px; border-radius: 0.4rem; }

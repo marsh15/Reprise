@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
+import type { RecallItem } from '../shared/memory';
 import type { Conversation } from '../shared/types';
 import { deleteConversation, listConversations } from './api';
 import { Sidebar } from './components/Sidebar';
@@ -9,6 +10,7 @@ export function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<string | null>(localStorage.getItem('reprise.conversation'));
   const [threadKey, setThreadKey] = useState(0);
+  const [target, setTarget] = useState<RecallItem | null>(null);
   const [error, setError] = useState('');
   const [clock, setClock] = useState<string | null>(null);
   async function refresh() {
@@ -22,8 +24,15 @@ export function App() {
     }).catch(() => {});
   }, []);
   function select(id: string | null) {
-    setSelected(id); setThreadKey(key => key + 1); setError('');
+    setTarget(null); setSelected(id); setThreadKey(key => key + 1); setError('');
     if (id) localStorage.setItem('reprise.conversation', id); else localStorage.removeItem('reprise.conversation');
+  }
+  function navigateRecall(item: RecallItem) {
+    if (item.conversationId !== selected) {
+      setSelected(item.conversationId); setThreadKey(key => key + 1);
+      localStorage.setItem('reprise.conversation', item.conversationId);
+    }
+    setError(''); setTarget(item);
   }
   function created(id: string) { setSelected(id); localStorage.setItem('reprise.conversation', id); void refresh(); }
   async function remove(id: string) {
@@ -36,7 +45,7 @@ export function App() {
     {error && <div className="error" role="alert">{error}</div>}
     <div className="app-shell">
       <Sidebar conversations={conversations} selected={selected} now={clock ?? undefined} onSelect={id => select(id)} onNew={() => select(null)} onDelete={id => void remove(id)} />
-      <Thread key={threadKey} conversationId={selected} onCreated={created} onChange={() => void refresh()} />
+      <Thread key={threadKey} conversationId={selected} onCreated={created} onChange={() => void refresh()} historyEmpty={conversations.length === 0} target={target} onRecall={navigateRecall} onTargetHandled={() => setTarget(null)} />
     </div>
   </>;
 }

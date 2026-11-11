@@ -4,9 +4,13 @@ import { chatReducer, initialState } from '../state';
 import { turnRequestSchema, type MessageDTO, type TurnRequest } from '../../shared/types';
 import { Message } from './Message';
 import { Composer } from './Composer';
+import type { RecallItem } from '../../shared/memory';
 
-export function Thread({ conversationId, onCreated, onChange }: { conversationId: string | null; onCreated: (id: string) => void; onChange: () => void }) {
+export function Thread({ conversationId, onCreated, onChange, historyEmpty = false, target, onRecall, onTargetHandled }: { conversationId: string | null; onCreated: (id: string) => void; onChange: () => void; historyEmpty?: boolean; target: RecallItem | null; onRecall: (item: RecallItem) => void; onTargetHandled: () => void }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
+  const [navigationError, setNavigationError] = useState<string | null>(null);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(Boolean(conversationId));
   const id = useRef(conversationId);
   const request = useRef<AbortController | null>(null);
@@ -29,9 +33,24 @@ export function Thread({ conversationId, onCreated, onChange }: { conversationId
       if (mounted.current) dispatch({ type: 'load', messages: detail.messages });
     }).catch(error => { if (mounted.current) dispatch({ type: 'error', message: error.message }); })
       .finally(() => { if (mounted.current) setLoading(false); });
-    return () => { mounted.current = false; request.current?.abort(); };
+    return () => { mounted.current = false; request.current?.abort(); if (highlightTimer.current) clearTimeout(highlightTimer.current); };
   }, []);
-  useEffect(() => { bottom.current?.scrollIntoView({ block: 'end' }); }, [state.messages]);
+  useEffect(() => { if (!target && !highlighted) bottom.current?.scrollIntoView({ block: 'end' }); }, [state.messages]);
+  useEffect(() => {
+    if (!target || loading) return;
+    const message = state.messages.find(item => item.id === target.messageId && item.role === 'user');
+    const element = message && document.getElementById(`message-${message.id}`);
+    if (element && message) {
+      setNavigationError(null);
+      element.scrollIntoView({ block: 'center' }); element.focus({ preventScroll: true });
+      setHighlighted(message.id);
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setHighlighted(null), 2000);
+    } else {
+      setNavigationError('The recalled conversation or message could not be found. It may have been deleted.');
+    }
+    onTargetHandled();
+  }, [target, loading, state.messages, onTargetHandled]);
   async function send(text: string, retry?: MessageDTO) {
     if (request.current) return;
     const controller = new AbortController(); request.current = controller;
@@ -75,10 +94,12 @@ export function Thread({ conversationId, onCreated, onChange }: { conversationId
     <div className="thread" aria-busy={state.busy}>
       {loading ? <p>Loading conversation…</p> : state.messages.length === 0 ? <div className="empty">
         <p className="eyebrow">A conversation worth coming back to</p><h1>Ask me anything.</h1>
-        <p>I search the web when it helps and cite what I find. Your chats and sources are saved on this device.</p>
-        {["What's new in the latest Postgres release?", 'Compare Neon and Supabase pricing for a small team', 'What makes a good API?'].map(text => <button key={text} onClick={() => void send(text)}>{text}</button>)}
-      </div> : state.messages.map(message => <Message key={message.id} message={message} running={state.busy && message.id === state.assistantId} />)}
+        <p>I search the web when it helps, cite what I find, and remember our past conversations. Your history stays on this device.</p>
+        {["What's new in the latest Postgres release?", 'Compare Neon and Supabase pricing for a small team', 'What did we talk about yesterday?'].map(text => <button key={text} onClick={() => void send(text)}>{text}</button>)}
+        {historyEmpty && <p className="research-muted">Tip: run <code>npm run seed:demo</code> to add labelled demo history.</p>}
+      </div> : state.messages.map(message => <Message key={message.id} message={message} running={state.busy && message.id === state.assistantId} onRecall={onRecall} highlighted={message.id === highlighted} />)}
       {state.busy && <p role="status">Writing…</p>}
+      {navigationError && <p role="alert" className="error">{navigationError}</p>}
       {state.error && <p role="alert" className="error">{state.error}</p>}
       {!state.busy && retryable && <button onClick={() => void send(lastUser.content, lastUser)}>Retry answer</button>}
       <div ref={bottom} />

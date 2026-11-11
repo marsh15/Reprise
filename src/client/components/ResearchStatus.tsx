@@ -19,7 +19,8 @@ export function ResearchStatus({ searches, sources, running }: { searches: Searc
     <span>Searching · {searches.map(search => search.query).join(' · ')}…</span>
   </div>;
   const starts = searches.map(search => Date.parse(search.startedAt));
-  const sourceCount = new Set(sources.map(source => source.n)).size;
+  const searchIds = new Set(searches.map(search => search.id));
+  const sourceCount = new Set(sources.filter(source => searchIds.has(source.searchId)).map(source => source.n)).size;
   const duration = Math.max(...searches.map((search, i) => starts[i] + search.durationMs)) - Math.min(...starts);
   return <details className="research-status">
     <summary>{searches.length} {searches.length === 1 ? 'search' : 'searches'} · {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} · {(duration / 1000).toFixed(1)} s</summary>

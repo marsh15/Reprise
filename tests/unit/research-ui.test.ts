@@ -45,3 +45,8 @@ it('keeps published calendar dates stable across timezones and counts URL identi
   const html = renderToStaticMarkup(createElement(ResearchStatus, { searches: [search], sources: [source, { ...source, sourceId: randomUUID() }], running: false }));
   expect(html).toContain('1 source');
 });
+it('counts only sources from this research turn, keeping remembered observations out of the fresh-search summary', () => {
+  const historical = { ...source, sourceId: randomUUID(), searchId: randomUUID(), n: 2, title: 'Historical only' };
+  const html = renderToStaticMarkup(createElement(ResearchStatus, { searches: [search], sources: [historical, source], running: false }));
+  expect(html).toContain('1 source'); expect(html).not.toContain('2 sources'); expect(html).not.toContain('Historical only');
+});
