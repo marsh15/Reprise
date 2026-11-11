@@ -25,17 +25,16 @@ export async function cassetteSearch(path: string, options: { record?: Search; l
   const search: Search = async (request, signal) => {
     const key = `${normalizeQuery(request.query)}|${request.freshness}`;
     queries.push(key);
-    if (options.live) return options.live(request, signal);
-    if (!options.record) {
+    if (!options.record && !options.live) {
       signal.throwIfAborted();
       const outcome = cassette.entries[key];
       if (!outcome) { misses.push(key); return { status: 'error', results: [], durationMs: 0, error: 'cassette_miss' }; }
       return structuredClone(outcome);
     }
-    const outcome = await options.record(request, signal);
+    const outcome = await (options.live ?? options.record!)(request, signal);
     const retrievedAt = createClock().now().toISOString();
     const recorded: SearchOutcome = { ...outcome, results: outcome.results.map(result => ({ ...result, retrievedAt, fixture: false })) };
-    cassette.entries[key] = recorded;
+    if (options.record) cassette.entries[key] = recorded;
     return recorded;
   };
   return { search, misses, queries, get snapshot() { return structuredClone(cassette); }, flush: async () => {

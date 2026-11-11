@@ -30,3 +30,17 @@ it('returns one row per marker, worst state wins, without checking marker number
 it('does not accept partial numerical substrings', () => {
   expect(checkCitations('Has 90 seats [1].', new Map([[1, { sourceId: 'a', text: '190 seats' }]]))[0].state).toBe('unverified');
 });
+it('keeps citations after punctuation with the preceding claim, including markdown sentences', () => {
+  expect(checkCitations('Costs $90. [1] **Other** costs €80. [2]', registry)).toMatchObject([
+    { marker: 1, state: 'verified' }, { marker: 2, state: 'verified' },
+  ]);
+  expect(checkCitations('Costs $900. [1] **Other** costs €80. [2]', registry)).toMatchObject([
+    { marker: 1, state: 'unverified' }, { marker: 2, state: 'verified' },
+  ]);
+});
+it('does not pool different claims when closing emphasis follows sentence punctuation', () => {
+  const swapped = new Map([[1, { sourceId: 'a', text: '€80' }], [2, { sourceId: 'b', text: '$90' }]]);
+  expect(checkCitations('**Costs $90.** [1] **Other costs €80.** [2]', swapped)).toMatchObject([
+    { marker: 1, state: 'unverified' }, { marker: 2, state: 'unverified' },
+  ]);
+});

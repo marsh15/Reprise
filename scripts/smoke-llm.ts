@@ -23,8 +23,8 @@ try {
     { name: 'Chat Completions streaming, usage, tool_choice none', parameters: { tools, tool_choice: 'none' } },
     { name: 'forced web_search and tool-result continuation', parameters: { tools, tool_choice: { type: 'function', function: { name: 'web_search' } } }, toolCount: 1 },
     { name: 'parallel web_search calls', parameters: { tools, tool_choice: 'required', parallel_tool_calls: true }, toolCount: 2 },
-    { name: 'compatible reasoning effort', parameters: { reasoning_effort: config.LLM_REASONING_EFFORT ?? toolParameters.reasoning_effort ?? 'low' } },
-    { name: 'mid-conversation system note', parameters: {}, systemNote: true },
+    { name: 'compatible reasoning effort', parameters: { tools, tool_choice: 'none', reasoning_effort: config.LLM_REASONING_EFFORT ?? toolParameters.reasoning_effort ?? 'low' } },
+    { name: 'mid-conversation system note', parameters: { tools, tool_choice: 'none' }, systemNote: true },
   ];
   for (const probe of probes) {
     try {

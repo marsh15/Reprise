@@ -7,7 +7,7 @@
 > Do not change a settled decision without asking the owner.
 > Today's reference date: Wed 2026-11-11 (owner's timezone is Asia/Kolkata).
 
-**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete; live-provider/P0 acceptance and model selection remain blocked. See [M6-CHECKPOINT.md](M6-CHECKPOINT.md). The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
+**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete. Live-provider verification has run, but P0 acceptance and model selection remain unmet; see [LIVE-ACCEPTANCE.md](LIVE-ACCEPTANCE.md). [M6-CHECKPOINT.md](M6-CHECKPOINT.md) records the earlier offline baseline. The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
 
 ---
 

@@ -30,7 +30,10 @@ function supported(token: Token, evidence: Token[]): boolean {
 const severity = { unchecked: 0, verified: 1, unverified: 2, invalid: 3 };
 export function checkCitations(text: string, registry: Map<number, { sourceId: string; text: string }>): CitationRecord[] {
   const checked = new Map<number, CitationRecord>();
-  const sentences = text.split(/\n|(?<=[.!?])\s+(?=[A-Z0-9"“(])/);
+  // A marker after sentence punctuation still cites that sentence, not the next one.
+  const attached = text.replace(/([.!?])([*_`]+)(?=\s|$)/g, '$2$1')
+    .replace(/([.!?])[ \t]*((?:\[\d{1,3}(?:\s*,\s*\d{1,3})*\][ \t]*)+)/g, '$2$1 ');
+  const sentences = attached.split(/\n|(?<=[.!?])\s+(?=[*_`]*[A-Z0-9"“(])/);
   for (const sentence of sentences) {
     const markers = [...new Set(citationMarkers(sentence))];
     const required = tokens(sentence);

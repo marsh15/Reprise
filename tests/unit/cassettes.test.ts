@@ -41,3 +41,12 @@ it('records to a new path, strips secrets by persisting only outcomes, and prese
     expect(outcome.results[0].fixture).toBe(false); expect(outcome.results[0].retrievedAt).toBeTruthy();
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+it('timestamps live observations at retrieval rather than inheriting the frozen scenario clock', async () => {
+  const cassette = await cassetteSearch('unused-live.json', { live: fakeSearch().search });
+  const before = Date.now();
+  const outcome = await cassette.search({ query: 'live retrieval', freshness: 'any' }, new AbortController().signal);
+  const retrieved = Date.parse(outcome.results[0].retrievedAt!);
+  expect(retrieved).toBeGreaterThanOrEqual(before);
+  expect(retrieved).toBeLessThanOrEqual(Date.now());
+  expect(outcome.results[0].fixture).toBe(false);
+});

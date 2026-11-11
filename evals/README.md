@@ -12,7 +12,7 @@ Keep these results separate:
 4. **Fully live:** real LLM and Tavily. Historical scenario records remain labelled fixtures; they are not genuine user history. Capture/retrieval time remains actual, even though the scenario clock is frozen.
 5. **Human review:** inspect transcripts, claims and source excerpts for semantic support and conversational quality. Every report leaves this pending. An automatic pass does not complete this review.
 
-M6 still has no successful real-model run, recorded Tavily observations or fully live research result. Offline verification and remaining submission gates are in the [M6 checkpoint](../docs/M6-CHECKPOINT.md).
+Live OpenAI/Tavily checks have now run, including all 11 P0 scenarios with frozen synthetic evidence. Acceptance remains unmet; see [LIVE-ACCEPTANCE.md](../docs/LIVE-ACCEPTANCE.md) for actual scores, source-review failures, recorded-search limits and measurements. The [M6 checkpoint](../docs/M6-CHECKPOINT.md) records the earlier offline baseline.
 
 ## Run and reproduce
 
