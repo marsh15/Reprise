@@ -7,7 +7,7 @@
 > Do not change a settled decision without asking the owner.
 > Today's reference date: Wed 2026-11-11 (owner's timezone is Asia/Kolkata).
 
-**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete. Live-provider verification has run, but P0 acceptance and model selection remain unmet; see [LIVE-ACCEPTANCE.md](LIVE-ACCEPTANCE.md). [M6-CHECKPOINT.md](M6-CHECKPOINT.md) records the earlier offline baseline. The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
+**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete. Live-provider verification has run, but P0 acceptance and model selection remain unmet; see [LIVE-ACCEPTANCE.md](LIVE-ACCEPTANCE.md) and the subsequent targeted [CORRECTNESS-REVIEW.md](CORRECTNESS-REVIEW.md). [M6-CHECKPOINT.md](M6-CHECKPOINT.md) records the earlier offline baseline. The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
 
 ---
 
@@ -720,10 +720,10 @@ carried_sources:
 - then carried sources;
 - then web results as they arrive, continuing the sequence.
 
-The same URL within a turn reuses its number. Web results go back as tool results:
+Correctness remediation: each immutable observation now has its own number, even for repeated URLs, so old and fresh excerpts cannot silently share support. Recalling the same source UUID twice still deduplicates it. A compact citation index repeats exact references and observation roles before synthesis. The append-only ledger and schema remain unchanged. Web results go back as tool results:
 
 ```json
-{"query":"…","status":"ok","results":[{"n":7,"title":"…","url":"…","published":"2026-11-02"|null,"retrieved":"2026-11-11T08:35Z","excerpt":"…"}]}
+{"query":"…","status":"ok","results":[{"cite":"[7]","n":7,"title":"…","url":"…","published":"2026-11-02"|null,"retrieved":"2026-11-11T08:35Z","excerpt":"…"}]}
 ```
 
 Error results look like this:
@@ -993,14 +993,14 @@ Duplicate-query guard: normalised as lowercase, trimmed, collapsed whitespace.
 
 1. Find markers with `/\[(\d{1,3})\]/g`. `[1][2]` and `[1, 2]` are both supported; split on commas.
 2. For each marker: if `n` is not in the registry → `state: 'invalid'`, `source_id: null`.
-3. Split the text into sentences: `(?<=[.!?])\s+(?=[A-Z0-9"“(])`. Markdown table rows are treated as sentences.
+3. Split the text into sentences: `(?<=[.!?])\s+(?=[A-Z0-9"“(])`. Markdown table cells are treated independently, retaining the row subject. A semicolon after a citation separates independently cited clauses.
 4. For each sentence containing markers, extract checkable tokens:
    - **Money:** `[$€£₹]\s?\d[\d,]*(\.\d+)?` and `\d[\d,]*(\.\d+)?\s?(USD|EUR|GBP|INR)`.
    - **Percentages:** `\d+(\.\d+)?%`.
    - **Dates:** `\d{1,2} (Jan|…|Dec)[a-z]*( \d{4})?`, `(Jan|…|Dec)[a-z]* \d{1,2}(, \d{4})?`, `\d{4}-\d{2}-\d{2}`.
    - **Bare numbers** with ≥2 significant digits that aren't citation markers or years in dates.
    - Normalise: drop commas, `90.00` becomes `90`, months become their 3-letter lowercase form, `$90` becomes the number token `90` with currency `$`.
-5. A sentence's source text = the concatenation of the normalised excerpts of *all* sources cited in that sentence.
+5. Explicitly named publication/retrieval roles may use the matching observation metadata date. Calendar-equivalent dates normalize together. A known source-domain subject explicitly named in a claim but absent from the cited observation produces an unverified attribution warning; ambiguous or unrecognized subjects remain outside this narrow check. A sentence's source text = the concatenation of the normalised excerpts of *all* sources cited in that sentence.
    - Every token found → each marker in the sentence is `verified`.
    - Any token missing → `unverified`, with `detail: 'not found in source: $90'`.
    - No tokens → `unchecked`.

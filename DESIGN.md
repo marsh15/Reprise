@@ -18,7 +18,7 @@ One model chooses searches, compares evidence and writes. Its only tool is `web_
 
 Calendar arithmetic and retrieval belong in code for reproducibility and inspection, though keyword recall can miss paraphrases. Original timestamped messages establish what was said; summaries never replace them. Fresh retrieval creates a distinct observation with its own identity, excerpt and retrieval time. Publication and effective dates remain separate facts.
 
-A normalized-URL registry assigns citation markers. The checker flags unknown markers and missing recognizable numerical/date tokens in the cited sentence's combined excerpts. It does not verify meaning, attribution, source quality or correct arithmetic. Multiple observations of one URL share a marker, so numerical support is not tied to one observation date. The UI discloses this.
+Each immutable observation gets a citation marker, including repeated URLs. An explicit reference index helps the model preserve source identities. Code flags unknown markers, missing numerical/date tokens and explicit mismatches against known source subjects; table cells are checked separately. Publication/retrieval metadata supports only named date roles. These warnings do not establish meaning, source quality, arithmetic or complete attribution. The UI discloses these limits.
 
 Change classification remains a model judgment under explicit rules: a source establishing and dating a change supports **verified change**; differing past/current observations support **observed difference**. Matching observations establish only checked attributes; missing/conflicting evidence requires uncertainty. Prices require comparable tiers, units, seats, currencies and billing commitments.
 

@@ -2,7 +2,7 @@
 
 A local chat agent for **what we discussed then, and what we can verify now**. Reprise combines persistent conversations, deterministic dates and recall, and one bounded web-search tool. Original messages and dated source observations remain available for later rechecks.
 
-Read [DESIGN.md](DESIGN.md) for the one-page engineering design. **Offline M6 verification is complete; submission acceptance remains blocked by live provider access.** No live-model winner, quality score or latency/cost benchmark is established. See the [M6 checkpoint](docs/M6-CHECKPOINT.md) for exact results and remaining gates.
+Read [DESIGN.md](DESIGN.md) for the one-page engineering design. **Live providers work, but correctness acceptance remains unmet.** The [correctness checkpoint](docs/CORRECTNESS-REVIEW.md) records source-attribution fixes, actual failed evaluations, latency/cost and the unchanged provisional model. The [M6 checkpoint](docs/M6-CHECKPOINT.md) records the earlier engineering baseline.
 
 ## Run locally
 
@@ -40,7 +40,7 @@ Every supported environment setting is in [.env.example](.env.example). Shell va
 
 Create or switch conversations in the sidebar. Enter sends, Shift+Enter adds a newline, and Stop or Esc interrupts. Switching conversations disconnects the current stream. Reload retrieves saved history; Retry uses the saved user message and preserves previous attempts. An unacknowledged request is temporarily retained in browser session storage for recovery. Conversation deletion removes its history and evidence after confirmation.
 
-Expand the research summary to see queries, failures and sources. Hover or focus a citation to inspect publication/retrieval dates, historical versus current observations and fixture labels. Dotted citations indicate missing numerical/date tokens; an invalid marker has no registered source. **A numerical check is not semantic verification.** Multiple observations of one URL share a marker and do not identify the supporting date for each claim.
+Expand the research summary to see queries, failures and sources. Hover or focus a citation to inspect publication/retrieval dates, historical versus current observations and fixture labels. Dotted citations indicate unsupported numerical/date tokens or an explicit source-subject mismatch; an invalid marker has no registered source. **A numerical check is not semantic verification.** Each new observation has its own marker, even for a previously retrieved URL. Inspect the actual excerpt and observation date; a matching number still does not establish meaning or correct attribution.
 
 Recall chips open the original message. Supported English dates include `3 November`, `yesterday` and `last Tuesday`; numeric dates such as `3/11` are excluded. Date arithmetic uses the request timezone; stored local dates retain their original timezone interpretation. Ambiguity assumptions and missing-history information go to the model before it answers. A new database has no genuine past conversations.
 
