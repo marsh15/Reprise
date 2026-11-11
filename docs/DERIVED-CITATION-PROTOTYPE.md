@@ -171,6 +171,11 @@ Production still checks token presence with narrow attribution warnings and aggr
 
 ## Git and stop condition
 
-Authorized destination: `origin/main`, appending to baseline `21ee08c`. Implementation commit subject: **Add evaluation-only signed subtraction diagnostics**. Its exact SHA is recorded in the follow-up checkpoint entry and final handoff. Only new evaluation code, curated synthetic gold/tests, the evaluation README and this checkpoint are included. No generated reports, private captures, secrets or local SQLite files are committed. The independent frontend redesign worktree/branch is untouched.
+Authorized destination: `origin/main`, appending to baseline `21ee08c`.
+
+- `5662d686b1e5c4d0f7a8da7afedea4a9d3af22bc` — **Add evaluation-only signed subtraction diagnostics**. Nine cohesive evaluation/test/documentation paths, committed after all verification above. Pushed to `origin/main`; `git ls-remote origin refs/heads/main` confirmed the exact SHA.
+- This delivery record is a separate documentation-only commit, **Record derived citation prototype checkpoint**. Its own SHA cannot be embedded in itself; the final handoff supplies the exact SHA and push confirmation.
+
+Staged path/count, whitespace and credential-pattern checks passed. No pull request was created. Only new evaluation code, curated synthetic gold/tests, the evaluation README and this checkpoint are included. No generated reports, private captures, secrets or local SQLite files are committed. The independent frontend redesign worktree/branch is untouched.
 
 Stop after this checkpoint. Keep evaluation-only diagnostics available for manual analysis. Request explicit owner approval of a separately scoped proposal before any production changes. No runtime winner is selected and Reprise is not declared submission-ready.
