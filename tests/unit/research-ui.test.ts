@@ -50,3 +50,33 @@ it('counts only sources from this research turn, keeping remembered observations
   const html = renderToStaticMarkup(createElement(ResearchStatus, { searches: [search], sources: [historical, source], running: false }));
   expect(html).toContain('1 source'); expect(html).not.toContain('2 sources'); expect(html).not.toContain('Historical only');
 });
+it('shows each dated observation without implying the canonical source date supports every claim', () => {
+  const current = { ...source, sourceId: randomUUID(), searchId: randomUUID(), title: 'New observation', excerpt: 'Costs $95', retrievedAt: '2026-11-12T08:30:00Z', fixture: false };
+  const html = renderToStaticMarkup(createElement(Message, { message: { ...message, evidence: {
+    searches: [{ ...search, id: current.searchId }], sources: [current, source], citations: message.evidence!.citations,
+  } } }));
+  expect(html).toContain('2 dated observations of this URL');
+  expect(html).toContain('does not identify which observation supports each claim');
+  expect(html).toContain('Preserved from an earlier answer');
+  expect(html).toContain('Searched for this answer');
+  expect(html).toContain('Costs $95'); expect(html).toContain('Costs $90');
+  expect(html).toContain('meaning and supporting date not checked');
+  expect(html).not.toContain('Source deleted or unavailable');
+});
+it.each(['auth', 'quota'])('keeps %s failures visible in the collapsed research summary', error => {
+  const html = renderToStaticMarkup(createElement(ResearchStatus, { searches: [{ ...search, status: 'error', error }], sources: [], running: false }));
+  expect(html.split('</summary>')[0]).toContain(error === 'auth' ? 'Search unavailable (authentication)' : 'Search unavailable (quota)');
+});
+it('keeps active research feedback bounded while retaining the full query list after completion', () => {
+  const searches = Array.from({ length: 5 }, (_, index) => ({ ...search, id: randomUUID(), status: 'error' as const, query: `${index} ${'long '.repeat(50)}` }));
+  const running = renderToStaticMarkup(createElement(ResearchStatus, { searches, sources: [], running: true }));
+  expect(running).toContain('+3 more'); expect(running.length).toBeLessThan(450);
+  const done = renderToStaticMarkup(createElement(ResearchStatus, { searches: searches.map(item => ({ ...item, status: 'empty' as const })), sources: [], running: false }));
+  for (const item of searches) expect(done).toContain(item.query);
+});
+it('gives the source card a safe link and group semantics for touch and keyboard access', () => {
+  const html = renderToStaticMarkup(createElement(Message, { message }));
+  expect(html).toContain('role="group" aria-label="Source 1 details"');
+  expect(html).toContain('<strong><a href="https://example.com/pricing" target="_blank" rel="noopener noreferrer">Price evidence</a></strong>');
+  expect(html).not.toContain('role="tooltip"');
+});

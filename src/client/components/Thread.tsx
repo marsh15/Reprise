@@ -12,32 +12,41 @@ export function Thread({ conversationId, onCreated, onChange, historyEmpty = fal
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(Boolean(conversationId));
+  const [loadError, setLoadError] = useState(false);
+  const following = useRef(true);
   const id = useRef(conversationId);
   const request = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const unacknowledged = useRef<TurnRequest | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  async function load() {
+    setLoading(true); setLoadError(false);
+    try {
+      const detail = await getConversation(conversationId!);
+      if (!mounted.current) return;
+      const pending = unacknowledged.current;
+      const lastUser = detail.messages.findLast(message => message.role === 'user');
+      dispatch({ type: 'load', messages: pending && lastUser?.content !== pending.text ? [...detail.messages, pendingUser(pending.text)] : detail.messages });
+    } catch { if (mounted.current) setLoadError(true); }
+    finally { if (mounted.current) setLoading(false); }
+  }
   useEffect(() => {
     mounted.current = true;
-    if (!conversationId) {
-      try {
-        const saved = turnRequestSchema.safeParse(JSON.parse(sessionStorage.getItem('reprise.pending') ?? 'null'));
-        if (saved.success && !saved.data.conversationId) {
-          unacknowledged.current = saved.data;
-          dispatch({ type: 'load', messages: [pendingUser(saved.data.text)] });
-          dispatch({ type: 'error', message: 'The last request was not acknowledged. Retry it safely with the same request id.' });
-        }
-      } catch { sessionStorage.removeItem('reprise.pending'); }
-    }
-    if (conversationId) void getConversation(conversationId).then(detail => {
-      if (mounted.current) dispatch({ type: 'load', messages: detail.messages });
-    }).catch(error => { if (mounted.current) dispatch({ type: 'error', message: error.message }); })
-      .finally(() => { if (mounted.current) setLoading(false); });
+    try {
+      const saved = turnRequestSchema.safeParse(JSON.parse(sessionStorage.getItem('reprise.pending') ?? 'null'));
+      if (saved.success && (saved.data.conversationId ?? null) === conversationId) {
+        unacknowledged.current = saved.data;
+        dispatch({ type: 'load', messages: [pendingUser(saved.data.text)] });
+        dispatch({ type: 'error', message: 'The last request was not acknowledged. Retry to recover your saved message.' });
+      }
+    } catch { /* Storage may be unavailable; the server still retains acknowledged messages. */ }
+    if (conversationId) void load();
     return () => { mounted.current = false; request.current?.abort(); if (highlightTimer.current) clearTimeout(highlightTimer.current); };
   }, []);
-  useEffect(() => { if (!target && !highlighted) bottom.current?.scrollIntoView({ block: 'end' }); }, [state.messages]);
+  useEffect(() => { if (following.current && !target && !highlighted) bottom.current?.scrollIntoView({ block: 'end' }); }, [state.messages]);
   useEffect(() => {
     if (!target || loading) return;
+    if (loadError) { onTargetHandled(); return; }
     const message = state.messages.find(item => item.id === target.messageId && item.role === 'user');
     const element = message && document.getElementById(`message-${message.id}`);
     if (element && message) {
@@ -50,61 +59,68 @@ export function Thread({ conversationId, onCreated, onChange, historyEmpty = fal
       setNavigationError('The recalled conversation or message could not be found. It may have been deleted.');
     }
     onTargetHandled();
-  }, [target, loading, state.messages, onTargetHandled]);
+  }, [target, loading, loadError, state.messages, onTargetHandled]);
   async function send(text: string, retry?: MessageDTO) {
     if (request.current) return;
     const controller = new AbortController(); request.current = controller;
-    const recovering = retry?.id === 'pending' && unacknowledged.current;
+    const recovering = retry && unacknowledged.current;
     const input: TurnRequest = recovering || { conversationId: id.current ?? undefined, clientMessageId: crypto.randomUUID(), text,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, retryOfUserMessageId: retry?.id };
     unacknowledged.current = input;
-    sessionStorage.setItem('reprise.pending', JSON.stringify(input));
+    try { sessionStorage.setItem('reprise.pending', JSON.stringify(input)); } catch { /* Sending works without browser storage. */ }
+    following.current = true; setNavigationError(null);
     dispatch({ type: 'begin', retry: Boolean(retry), user: pendingUser(text) });
     try {
       await sendTurn(input, controller.signal, event => {
-        if (!mounted.current) return;
+        if (!mounted.current || request.current !== controller) return;
         if (event.type === 'turn.started') {
-          unacknowledged.current = null; sessionStorage.removeItem('reprise.pending');
+          unacknowledged.current = null;
+          try { sessionStorage.removeItem('reprise.pending'); } catch { /* Browser storage is optional. */ }
           id.current = event.conversationId; onCreated(event.conversationId);
         }
         dispatch({ type: 'event', event });
       });
     } catch (error) {
-      if (mounted.current) dispatch({ type: 'error', message: error instanceof Error ? error.message : 'Connection lost. Retry your message.' });
+      if (mounted.current) dispatch({ type: 'error', message: controller.signal.aborted ? 'Answer interrupted. Retry your saved message.' : error instanceof Error ? error.message : 'Connection lost. Retry your saved message.' });
     } finally {
-      request.current = null;
       if (mounted.current) {
         // The DB is authoritative, including completed-request replay and failed attempts.
-        if (id.current) {
-          try { const detail = await getConversation(id.current); dispatch({ type: 'load', messages: detail.messages }); }
-          catch { /* Keep the visible transcript and connection error. */ }
+        if (id.current && !unacknowledged.current) {
+          try { const detail = await getConversation(id.current, AbortSignal.timeout(5000)); if (mounted.current) dispatch({ type: 'load', messages: detail.messages }); }
+          catch { if (mounted.current) setNavigationError('Could not refresh this conversation. Reopen it from the conversation list to load saved messages.'); }
         }
-        dispatch({ type: 'idle' }); onChange();
+        if (mounted.current) { request.current = null; dispatch({ type: 'idle' }); onChange(); }
       }
     }
   }
   function stop() {
-    if (id.current) void cancelTurn(id.current).catch(() => request.current?.abort());
-    else request.current?.abort();
+    const controller = request.current;
+    if (id.current && !unacknowledged.current) void cancelTurn(id.current).catch(() => controller?.abort());
+    else controller?.abort();
   }
   const lastUser = state.messages.findLast(message => message.role === 'user');
   const reply = lastUser && state.messages.findLast(message => message.replyTo === lastUser.id);
-  const retryable = lastUser && (!reply || reply.status !== 'complete');
-  return <main className="chat">
-    <div className="thread" aria-busy={state.busy}>
-      {loading ? <p>Loading conversation…</p> : state.messages.length === 0 ? <div className="empty">
+  const retryable = lastUser && (unacknowledged.current || !reply || reply.status !== 'complete');
+  const active = state.messages.find(message => message.id === state.assistantId);
+  const searching = active?.evidence?.searches.some(search => search.status === 'error' && !search.error);
+  const status = !state.busy ? '' : !state.assistantId ? 'Sending…' : searching ? 'Researching…' : active?.content ? 'Writing answer…' : 'Thinking…';
+  return <main id="chat" className="chat" tabIndex={-1} aria-label="Conversation">
+    <div className="thread" aria-busy={loading} onScroll={event => {
+      const element = event.currentTarget; following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+    }}>
+      {loading ? <p role="status">Loading conversation…</p> : loadError ? <div role="alert" className="error"><p>Could not load this conversation. It may be unavailable or deleted.</p><button onClick={() => void load()}>Try loading again</button></div> : state.messages.length === 0 ? <div className="empty">
         <p className="eyebrow">A conversation worth coming back to</p><h1>Ask me anything.</h1>
-        <p>I search the web when it helps, cite what I find, and remember our past conversations. Your history stays on this device.</p>
+        <p>I search the web when it helps, cite what I find, and remember our past conversations. Conversations are saved on this device.</p>
         {["What's new in the latest Postgres release?", 'Compare Neon and Supabase pricing for a small team', 'What did we talk about yesterday?'].map(text => <button key={text} onClick={() => void send(text)}>{text}</button>)}
         {historyEmpty && <p className="research-muted">Tip: run <code>npm run seed:demo</code> to add labelled demo history.</p>}
       </div> : state.messages.map(message => <Message key={message.id} message={message} running={state.busy && message.id === state.assistantId} onRecall={onRecall} highlighted={message.id === highlighted} />)}
-      {state.busy && <p role="status">Writing…</p>}
+      <p className="turn-status" role="status" aria-live="polite" aria-atomic="true">{status || (state.assistantId && active?.status === 'complete' ? 'Answer complete.' : '')}</p>
       {navigationError && <p role="alert" className="error">{navigationError}</p>}
       {state.error && <p role="alert" className="error">{state.error}</p>}
-      {!state.busy && retryable && <button onClick={() => void send(lastUser.content, lastUser)}>Retry answer</button>}
+      {!loading && !loadError && !state.busy && !request.current && retryable && <button onClick={() => void send(lastUser.content, lastUser)}>Retry answer</button>}
       <div ref={bottom} />
     </div>
-    <Composer busy={state.busy} disabled={loading || Boolean(unacknowledged.current) && !state.busy} onSend={send} onStop={stop} />
+    <Composer busy={state.busy} disabled={loading || loadError || !state.busy && Boolean(request.current || unacknowledged.current)} onSend={send} onStop={stop} />
   </main>;
 }
 

@@ -4,14 +4,16 @@ export const initialState: ChatState = { messages: [], busy: false, assistantId:
 type Action = { type: 'load'; messages: MessageDTO[] } | { type: 'begin'; user: MessageDTO; retry: boolean } | { type: 'event'; event: TurnEvent } | { type: 'error'; message: string } | { type: 'idle' };
 export function chatReducer(state: ChatState, action: Action): ChatState {
   switch (action.type) {
-    case 'load': return { ...state, messages: action.messages };
-    case 'begin': return { ...state, busy: true, error: null, messages: action.retry ? state.messages : [...state.messages, action.user] };
+    case 'load': return { ...state, messages: action.messages, error: action.messages.some(message => message.id === state.assistantId && message.status === 'complete') ? null : state.error };
+    case 'begin': return { ...state, busy: true, assistantId: null, error: null, messages: action.retry ? state.messages : [...state.messages, action.user] };
     case 'idle': return { ...state, busy: false };
-    case 'error': return { ...state, busy: false, error: action.message };
+    case 'error': return { ...state, busy: false, error: action.message, messages: state.messages.map(message => message.id === state.assistantId ? { ...message, status: 'interrupted' } : message) };
     case 'event': {
       const event = action.event;
+      if (!state.busy) return state;
       switch (event.type) {
         case 'turn.started': {
+          if (state.assistantId) return state;
           const messages = state.messages.map(m => m.id === 'pending' ? { ...m, id: event.userMessageId } : m);
           if (!messages.some(m => m.id === event.assistantMessageId)) messages.push({ id: event.assistantMessageId, role: 'assistant', content: '', status: 'complete', createdAt: new Date().toISOString(), localDate: '', seq: messages.length + 1, replyTo: event.userMessageId });
           return { ...state, messages, assistantId: event.assistantMessageId };
@@ -33,7 +35,7 @@ export function chatReducer(state: ChatState, action: Action): ChatState {
         }) };
         case 'answer.delta': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, content: m.content + event.text } : m) };
         case 'answer.reset': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, content: '' } : m) };
-        case 'turn.completed': return { ...state, busy: false };
+        case 'turn.completed': return event.assistantMessageId === state.assistantId ? { ...state, busy: false } : state;
         case 'turn.error': return { ...state, busy: false, error: event.message, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, status: event.code === 'cancelled' ? 'interrupted' : 'failed' } : m) };
       }
     }

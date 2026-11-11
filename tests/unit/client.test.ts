@@ -33,3 +33,41 @@ it('reduces start, deltas, reset, and cancellation without duplicating the user'
   expect(state.messages[1]).toMatchObject({ content: 'partial', status: 'interrupted' });
   expect(state.busy).toBe(false);
 });
+it('ignores duplicate starts and all events after completion or cancellation', () => {
+  let state = chatReducer(initialState, { type: 'begin', retry: false, user: { id: 'pending', role: 'user', content: 'Hi', status: 'complete', createdAt: '', localDate: '', seq: 1, replyTo: null } });
+  state = chatReducer(state, { type: 'event', event: { type: 'turn.started', ...ids } });
+  expect(chatReducer(state, { type: 'event', event: { type: 'turn.started', ...ids, assistantMessageId: ids.traceId } })).toBe(state);
+  expect(chatReducer(state, { type: 'event', event: { type: 'turn.completed', assistantMessageId: ids.traceId, stats } })).toBe(state);
+  for (const terminal of [
+    { type: 'turn.completed' as const, assistantMessageId: ids.assistantMessageId, stats },
+    { type: 'turn.error' as const, code: 'cancelled' as const, message: 'Stopped', retryable: true },
+  ]) {
+    const done = chatReducer(state, { type: 'event', event: terminal });
+    for (const event of [terminal, { type: 'answer.delta' as const, text: 'late' }, { type: 'answer.reset' as const }]) {
+      expect(chatReducer(done, { type: 'event', event })).toBe(done);
+    }
+  }
+});
+it('keeps a dropped-stream partial visibly incomplete and resets the active answer before retry', () => {
+  const partial = { id: ids.assistantMessageId, role: 'assistant' as const, content: 'Partial', status: 'complete' as const, createdAt: '', localDate: '', seq: 2, replyTo: ids.userMessageId };
+  const state = chatReducer({ ...initialState, messages: [partial], assistantId: partial.id, busy: true }, { type: 'error', message: 'Connection lost' });
+  expect(state.messages[0]).toMatchObject({ content: 'Partial', status: 'interrupted' });
+  expect(chatReducer(state, { type: 'begin', retry: true, user: partial })).toMatchObject({ busy: true, assistantId: null, error: null, messages: [state.messages[0]] });
+});
+it('stops reading at the first terminal event even when late events share a chunk', async () => {
+  const events: TurnEvent[] = [];
+  await readEvents(bytes(`event: turn.completed\ndata: ${JSON.stringify({ assistantMessageId: ids.assistantMessageId, stats })}\n\nevent: answer.delta\ndata: {"text":"late"}\n\n`, 1000), event => events.push(event));
+  expect(events.map(event => event.type)).toEqual(['turn.completed']);
+});
+it('replaces parser diagnostics and transport exceptions with recoverable messages', async () => {
+  await expect(readEvents(bytes('event: answer.delta\ndata: {"text":4}\n\n', 1000), () => {})).rejects.toThrow('The response could not be read. Retry your saved message.');
+  const broken = new ReadableStream<Uint8Array>({ start(controller) { controller.error(new Error('internal socket details')); } });
+  await expect(readEvents(broken, () => {})).rejects.toThrow('Connection lost. Retry your saved message.');
+});
+it('clears a lost-terminal warning only when the authoritative active answer is complete', () => {
+  const answer = { id: ids.assistantMessageId, role: 'assistant' as const, content: 'Saved answer', status: 'complete' as const, createdAt: '', localDate: '', seq: 2, replyTo: ids.userMessageId };
+  const dropped = { ...initialState, assistantId: answer.id, error: 'Connection lost' };
+  expect(chatReducer(dropped, { type: 'load', messages: [answer] }).error).toBeNull();
+  expect(chatReducer(dropped, { type: 'load', messages: [{ ...answer, status: 'interrupted' }] }).error).toBe('Connection lost');
+  expect(chatReducer(dropped, { type: 'load', messages: [{ ...answer, id: ids.traceId }] }).error).toBe('Connection lost');
+});
