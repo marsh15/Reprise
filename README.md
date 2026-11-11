@@ -2,7 +2,7 @@
 
 A local chat agent that treats answers as dated observations: remember the conversation, research current information, and keep the evidence.
 
-**Current milestone: M1.** Persistent streaming chat, conversation management, Stop, and Retry are implemented. Search and cross-conversation recall are not implemented. See the [M1 checkpoint](docs/M1-CHECKPOINT.md) for verification and the live-provider limitation.
+**Current milestone: M2 implementation checkpoint.** Streaming chat now includes bounded Tavily research, a durable evidence ledger, citation checks, and research/source UI. Deterministic verification passes; live provider acceptance and the model bake-off remain blocked. Cross-conversation recall is M3. See the [M2 checkpoint](docs/M2-CHECKPOINT.md).
 
 ## Run locally
 
@@ -17,7 +17,7 @@ npm run dev
 
 Open http://localhost:5173. `GET /api/health` reports the configured model, search provider, clock mode, and current instant. Health confirms local server readiness; it does not check provider authentication.
 
-If `.env` is absent, `predev` creates it from `.env.example` and reports which keys to fill in. Preflight checks Node, built-in SQLite, FTS5, and configuration without making API calls or spending credits. It checks key presence, not validity. Local tests use explicit non-secret values and a fake provider. Real chat needs a valid LLM credential. Tavily remains required by the approved startup contract, although M1 does not call it.
+If `.env` is absent, `predev` creates it from `.env.example` and reports which keys to fill in. Preflight checks Node, built-in SQLite, FTS5, and configuration without making API calls or spending credits. It checks key presence, not validity. Local tests use explicit non-secret values and a fake provider. Real chat needs a valid LLM credential. Research calls Tavily only when the model requests `web_search`.
 
 ```bash
 npm run typecheck
@@ -36,7 +36,7 @@ All variables are documented in [.env.example](.env.example). Shell environment 
 - `TAVILY_API_KEY`: required server-side search credential.
 - `LLM_BASE_URL`: OpenAI-compatible endpoint; default `https://api.openai.com/v1`.
 - `LLM_MODEL`: `gpt-6-luna` pending the M2 model comparison; live model availability and parameters still need verification with credentials.
-- `LLM_REASONING_EFFORT`: optional `none`, `low`, `medium`, or `high`.
+- `LLM_REASONING_EFFORT`: optional `none`, `low`, `medium`, or `high`. Official GPT-6 Luna Chat Completions tools require `none`, applied when unset. Conflicting values are rejected. GPT-6.1 Terra tool calling requires Responses and is incompatible with this Chat Completions architecture.
 - `PORT`: defaults to `5173`; server binds to `127.0.0.1`.
 - `REPRISE_DB_PATH`: defaults to `./data/reprise.db`.
 - `LOG_LEVEL`: `debug`, `info`, `warn`, or `error`; default `info`.
@@ -58,13 +58,13 @@ Configuration is parsed once with Zod. The clock centralizes real versus frozen 
 
 ## Upcoming milestones
 
-M1 is implemented; approval is the checkpoint before M2. M2 adds Tavily research, citation checking, and model comparisons. M3 adds deterministic temporal recall and explicitly labelled demo fixtures. M4 completes evaluations, M5 reliability and UX, and M6 submission documentation.
+M2 implementation is available with live acceptance/model selection pending. M3 adds deterministic temporal recall and explicitly labelled demo fixtures, only after owner approval. M4 completes evaluations, M5 reliability and UX, and M6 submission documentation.
 
-`seed:demo` and `eval` will be added when their implementations exist. Fixtures will never seed automatically or be presented as genuine conversations. Final `DESIGN.md` and interview notes are M6 deliverables.
+`npm run eval` is implemented; see [evaluation commands and limits](evals/README.md). `seed:demo` belongs to M3. Fixtures will never seed automatically or be presented as genuine conversations. Final `DESIGN.md` and interview notes are M6 deliverables.
 
 ## Privacy and limits
 
-The target is single-user local use, without authentication. History stays in an ignored SQLite file under `data/`. Answer generation sends the latest 20 messages of the selected conversation to the configured LLM provider. The browser stores the selected conversation id locally and temporarily keeps an unacknowledged request in session storage for safe recovery. Future research will send queries to Tavily. There is no telemetry. `.env`, databases, generated evaluation results, and dependency/build directories are ignored by Git.
+The target is single-user local use, without authentication. History stays in an ignored SQLite file under `data/`. Answer generation sends the latest 20 messages of the selected conversation to the configured LLM provider. The browser stores the selected conversation id locally and temporarily keeps an unacknowledged request in session storage for safe recovery. Research sends queries to Tavily. The LLM also receives the cited source observations carried from the last two assistant replies (up to eight), plus new search excerpts. There is no telemetry. `.env`, databases, generated evaluation results, and dependency/build directories are ignored by Git.
 
 ## M0 verification record
 
@@ -100,3 +100,16 @@ npx tsx tests/helpers/previewServer.ts
 ```
 
 `npm test` covers SQLite, FTS, duplicate requests, concurrent turns, cancellation, retries, failed writes, SSE parsing, real socket disconnects, and process restarts. The smoke script checks the configured provider separately; passing mock tests does not establish real model compatibility.
+
+## Research behavior
+
+The model sees exactly one tool: `web_search`. Code enforces three research rounds, five queries per round, ten per turn, eight seconds per search, and a 25-second research deadline. Independent calls run concurrently. After budget exhaustion the model gets one answer-only step. The deadline bounds research, not the subsequent final answer stream. Stop propagates through both search and model requests. Draft text is reset when tool calls begin; only the current answer text is persisted.
+
+Search observations retain their sanitized excerpt, title, canonical HTTP(S) URL, provider publication date when available, retrieval time, and parent search. Citation states check source identity and numerical/date tokens. **Verified means those tokens were found; it does not verify meaning, source quality, or whether a claim is true.** Unknown markers and missing tokens remain visible. Deleting a conversation deletes its sources.
+
+```bash
+npm run eval -- --mock  # nine scripted scenarios; validates the harness, not model quality
+npm run eval           # real LLM + frozen replay; reports blocked access explicitly
+```
+
+Current live constraints: OpenAI/Tavily credentials are absent; the available OpenRouter account returned HTTP 402, and its pinned US endpoint rejected the explicit parallel-call parameter with HTTP 404. There are no measured model scores, live latency/cost measurements, or approved model winner. Never paste credentials into chat or commit them; configure local environment values privately.

@@ -1252,6 +1252,18 @@ These are our own weights for self-assessment, **not** minimi's rubric:
 - Expected cost: under $1.
 - **LLM-as-judge is not used for pass/fail.** It would be a model grading a model.
 
+#### M2 execution record — 11 November 2026
+
+The M2 implementation is deterministic-test verified. The controlled live bake-off is **blocked**, with no winning default selected. Full measurements and limitations are in [M2-CHECKPOINT.md](M2-CHECKPOINT.md); v0 commands and frozen fixture provenance are in [../evals/README.md](../evals/README.md).
+
+| Planned candidate | Actual access/compatibility result | P0 pass rate | Median TTFT / total latency | Tokens / cost per turn | Tool reliability |
+|---|---|---|---|---|---|
+| `gpt-6-luna`, OpenAI | Untested: `LLM_API_KEY` absent. Official docs require `reasoning_effort: none` for Chat Completions tools; implemented. | Untested | Not measured | Unknown | Untested |
+| `gpt-6.1-terra`, OpenAI | Untested and incompatible with this tool path: official docs require Responses API tool calling. No substitution or architecture change. | Untested | Not measured | Unknown | Untested |
+| `deepseek/deepseek-v4.1-flash`, OpenRouter `fireworks/us` | Real probes returned HTTP 402 (insufficient credits). Explicit parallel-call probe returned HTTP 404 with strict parameter routing. One actual D1 replay attempt was provider-blocked before generation. | Untested | Not measured | Unknown | Untested |
+
+The nine synthetic/mock scenarios validate the harness only, including injection containment; they are not model scores. No live Tavily recordings were made (`TAVILY_API_KEY` absent). No real-model injection-resistance result is claimed. Official sources: [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [OpenRouter endpoint catalog](https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints). The selection hierarchy above is unchanged; the owner must approve any eventual winner. M3-dependent scenarios remain deferred rather than being counted as passes.
+
 ### N.5 Demo fixtures (`seed:demo`)
 
 Dates are relative to the run date in the user's timezone. Every row has `origin='fixture'`, and every fixture source has `fixture=1`. Its excerpt starts with "[Demo fixture — illustrative data captured for testing]".
