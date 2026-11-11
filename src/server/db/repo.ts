@@ -144,7 +144,7 @@ export function createRepo(store: Store) {
     });
   }
   return {
-    createConversation, getConversation, touchConversation,
+    getConversation,
     startConversation: (input: Omit<UserInput, 'conversationId'> & { origin?: 'live' | 'fixture' }) => store.transaction(() => {
       const conversation = createConversation(input.text, input.now, input.origin);
       return insertMessage({ ...input, conversationId: conversation.id, id: randomUUID(), role: 'user', status: 'complete' });
