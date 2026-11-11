@@ -10,8 +10,18 @@ export const grounded = (r: TurnResult) => [...completed(r), ...(r.stats.searche
   ...citationIntegrity(r)];
 export const fixtureDisclosure = (text: string) => /demo|fixture|synthetic/i.test(text) ? [] : ['fixture not acknowledged'];
 export const mentions = (text: string, names: string[]) => names.filter(name => !text.toLowerCase().includes(name.toLowerCase())).map(name => `missing product: ${name}`);
-export const limitation = (text: string) => /cannot establish|can't establish|no (?:earlier|historical|past) (?:source|observation|evidence|baseline)|without (?:earlier|historical)|unable to establish|(?:cannot|can't) compare[^.\n]{0,60}(?:past|current|pricing|prices?|time|then|earlier|historical)/i.test(normalizeLanguage(text))
-  ? [] : ['historical baseline limitation missing'];
+export function limitation(text: string): string[] {
+  // Bind absence to historical information, not an unrelated "no" in the same clause.
+  const found = normalizeLanguage(text).split(/[.!?;\n]/).some(clause =>
+    /\b(?:no|without|missing)\s+(?:\w+\s+){0,2}(?:earlier|previous|prior|historical|past)\s+(?:\w+\s+){0,2}(?:sources?|observations?|evidence|baseline|record|plans?|prices?|pricing|terms|commitment)\b/i.test(clause)
+    || /\b(?:earlier|previous|prior|historical|past)\s+(?:\w+\s+){0,3}(?:sources?|observations?|evidence|baseline|record|plans?|prices?|pricing|terms|commitment)\s+(?:is|are|was|were)\s+(?:missing|unavailable|undocumented|unspecified|not (?:recorded|documented))\b/i.test(clause)
+    || /\b(?:cannot|can't|unable to)\s+compar(?:e|ed)\b[^.]{0,80}\b(?:past|then|earlier|historical|last)\b/i.test(clause)
+    || /\b(?:cannot|can't|unable to)\s+(?:identify\b[^.]{0,60}\bor\s+)?(?:establish|tell|determine|say|verify)\b[^.]{0,80}\b(?:whether|if)\b[^.]{0,40}\b(?:pric\w*|plans?)\b[^.]{0,20}\bchanged\b/i.test(clause)
+    || /\b(?:cannot|can't) identify\b[^.]{0,80}\b(?:plans?|providers?|hosts?|prices?)\b[^.]{0,40}\b(?:discussed|meant|asked)\b/i.test(clause)
+    || /\b(?:cannot|can't) establish what\b[^.]{0,40}\bprices?\b[^.]{0,40}\bthen\b[^.]{0,30}\bwhether they changed\b/i.test(clause)
+    || /\b(?:price|pricing|historical) change cannot be established\b/i.test(clause));
+  return found ? [] : ['historical baseline limitation missing'];
+}
 export function hasSyntheticSearchEvidence(r: TurnResult) {
   const fresh = r.evidence?.sources.filter(s => r.evidence?.searches.some(search => search.id === s.searchId)) ?? [];
   return fresh.length > 0 && fresh.every(s => s.fixture);
@@ -34,18 +44,29 @@ export function undatedChangeClaims(r: TurnResult): string[] {
 }
 
 export const normalizeLanguage = (text: string) => text.replace(/[‘’]/g, "'").replace(/[*_`]/g, '');
-export const noRecord = (text: string) => /\bno (?:(?:conversation|saved|stored|historical|earlier|past) )?record\b|\bdon't have\b[^.\n]{0,40}\b(?:record|history|conversation)\b|\bno (?:(?:earlier|previous) )?conversations?/i.test(normalizeLanguage(text));
+export const noRecord = (text: string) => /\bno (?:(?:conversation|saved|stored|historical|earlier|past) )?record\b|\bdon't have\b[^.\n]{0,40}\b(?:record|history|conversation)\b|\bno (?:(?:earlier|previous) )?conversations?|\b(?:previous|earlier|past) conversation is not (?:recorded|saved|stored)\b/i.test(normalizeLanguage(text));
+
+export function changeDateUncertainty(text: string): boolean {
+  // Bounded timing disclosures, not unrelated uncertainty elsewhere in the answer.
+  return normalizeLanguage(text).split(/[.!?;\n]/).some(clause =>
+    /\b(?:cannot|can't|do not|don't|does not|doesn't|did not|didn't)\s+(?:establish|say|show|determine|tell|indicate)\b[^.]{0,70}\b(?:when|date)\b[^.]{0,70}\b(?:chang(?:e|ed)|took effect)\b/i.test(clause)
+    || /\bneither (?:source |observation |one )?(?:establishes|gives|shows|says)\b[^.]{0,70}\b(?:when|date)\b[^.]{0,70}\b(?:chang(?:e|ed)|took effect)\b/i.test(clause)
+    || /\bneither (?:source |observation |one )?(?:establishes|gives|shows|says)\b[^.]{0,70}\beffective change date\b/i.test(clause)
+    || /\b(?:cannot|can't)\s+date\s+(?:an?|the)\s+(?:underlying\s+)?(?:price\s+)?change\b/i.test(clause)
+    || /\b(?:effective change date|date of change) (?:is )?unknown\b/i.test(clause)
+    || /\bno effective change date\b/i.test(clause));
+}
 export const historyStart = (text: string) => /2026-11-11|11\s+Nov(?:ember)?(?:\s+2026)?|Nov(?:ember)?\s+11(?:,?\s+2026)?|history (?:starts|begins)[^.\n]{0,20}today/i.test(text);
 export function affirmativeShipment(text: string): boolean {
   // A bounded lexical guard for these controlled availability cases, not a semantic judge.
   return normalizeLanguage(text).split(/[.!?;\n]|\bbut\b|\bhowever\b/i).some(clause => {
-    const claim = /\b(?:atlas|salesforce|it|feature)\s+(?:(?:has|is|was)\s+)?(?:(?:now|already|generally)\s+)?(?:shipped|launched|available)\b/i.exec(clause);
+    const claim = /\b(?:atlas|salesforce|it|feature)\s+(?:(?:has|is|was)\s+)?(?:(?:now|already|generally)\s+)?(?:shipped|released(?!\s+(?:(?:an?|the|its|their)\s+)?(?:announcement|statement|notice)\b)|launched|available)\b/i.exec(clause);
     if (!claim) return false;
     const prefix = clause.slice(0, claim.index);
     return !/\b(?:not|no|cannot|can't|couldn't)\b[^;]{0,70}\b(?:evidence|indicate|establish|confirm|say|show|mean|prove|support)\b/i.test(prefix);
   });
 }
-export const negativeAvailability = (text: string) => /future|planned|\b(?:not|cannot|can't|couldn't|wasn't|isn't|hasn't|doesn't)\b[^.\n|]{0,80}\b(?:shipped|available|availability)\b/i.test(normalizeLanguage(text));
+export const negativeAvailability = (text: string) => /future|planned|\b(?:not|cannot|can't|couldn't|wasn't|isn't|hasn't|doesn't)\b[^.\n|]{0,80}\b(?:shipped|released|available|availability)\b/i.test(normalizeLanguage(text));
 
 export function inventedPast(text: string): boolean {
   return normalizeLanguage(text).split(/[.!?;\n]/).some(clause => {

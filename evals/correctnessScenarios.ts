@@ -1,5 +1,5 @@
 import type { Scenario } from './scenarios';
-import { fixtureDisclosure, grounded, mentions, undatedChangeClaims } from './assertions';
+import { fixtureDisclosure, grounded, mentions, undatedChangeClaims, changeDateUncertainty } from './assertions';
 const call = (query: string) => ({ args: JSON.stringify({ query, freshness: 'any' }) });
 // Opt-in regressions: the canonical 11-P0/12-P1 acceptance denominator is unchanged.
 export const correctnessScenarios: Scenario[] = [
@@ -25,6 +25,6 @@ export const correctnessScenarios: Scenario[] = [
     script: [{ calls: [call('Aster current pricing')] }, { text: ['The synthetic historical Aster observation is $20 on 2026-11-03 [1]; the current observation is $25 on 2026-11-11 [2]. This is an observed difference; the evidence cannot establish when a price change occurred.'] }],
     assert: r => [...grounded(r), ...fixtureDisclosure(r.text), ...undatedChangeClaims(r),
       ...(!/observed difference/i.test(r.text) ? ['observation distinction missing'] : []),
-      ...(!/(?:cannot|can.t|no|not|unknown)[^.\n]{0,90}(?:date|when|establish|change)/i.test(r.text) ? ['missing change-date uncertainty'] : []),
+      ...(!changeDateUncertainty(r.text) ? ['missing change-date uncertainty'] : []),
       ...(![1, 2].every(marker => r.evidence?.citations.some(c => c.marker === marker)) ? ['both observation references required'] : [])] },
 ];
