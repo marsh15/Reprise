@@ -38,3 +38,10 @@ it('keeps evidence across answer.reset and reconciles research events', () => {
   state = chatReducer(state, { type: 'event', event: { type: 'citations', citations: message.evidence!.citations } });
   expect(state.messages[0].evidence?.citations).toHaveLength(2);
 });
+it('keeps published calendar dates stable across timezones and counts URL identities once', async () => {
+  const { sourceDateLabel } = await import('../../src/client/sourceLabels');
+  const date = sourceDateLabel('2026-11-12', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' });
+  expect(date).toContain('12'); expect(date).not.toContain('11/11');
+  const html = renderToStaticMarkup(createElement(ResearchStatus, { searches: [search], sources: [source, { ...source, sourceId: randomUUID() }], running: false }));
+  expect(html).toContain('1 source');
+});
