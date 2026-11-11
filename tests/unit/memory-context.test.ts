@@ -42,3 +42,12 @@ it('also bounds a request containing too many date-resolution records', () => {
   boundRecallPacket(p, 'today');
   expect(p.clarification).toBeTruthy(); expect(renderRecallContext(p, [], 'today').length).toBeLessThanOrEqual(24000);
 });
+it('associates recent assistant status and original markers with the supplied carried evidence', () => {
+  const p = packet(); const source = { ...historicalSource(), n: 8 }; p.carriedSources = [source];
+  p.currentConversation = [{ id: randomUUID(), role: 'assistant', content: 'Partial $90 [8]', status: 'interrupted', localDate: '2026-11-03', createdAt: source.retrievedAt, seq: 2, replyTo: null,
+    evidence: { sources: [source], searches: [], citations: [] } }];
+  const context = renderRecallContext(p, [{ ...source, n: 1 }], 'What did you recommend?');
+  const parsed = JSON.parse(context.slice('<context>\n'.length, -'\n</context>'.length));
+  expect(parsed.recent_message_metadata[0]).toMatchObject({ status: 'interrupted', localDate: '2026-11-03', source_refs: [{ sourceId: source.sourceId, historicalMarker: 8, n: 1 }] });
+  expect(context).not.toContain('Partial $90'); // Raw content is already in the plain chat messages.
+});

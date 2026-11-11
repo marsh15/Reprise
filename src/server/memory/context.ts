@@ -6,9 +6,16 @@ export function renderRecallContext(packet: RecallPacket, sources: SourceRecord[
   const observation = (source: SourceRecord) => ({ n: sources.find(s => s.sourceId === source.sourceId)?.n ?? 999999,
     sourceId: source.sourceId, historicalMarker: source.n, title: source.title, url: source.url, published: source.publishedAt,
     retrieved: source.retrievedAt, excerpt: clipHistoricalText(source.excerpt, 600), fixture: source.fixture, kind: 'historical observation' });
+  const suppliedIds = new Set([...packet.recalledTurns.flatMap(t => t.sources), ...packet.carriedSources].map(s => s.sourceId));
   const context = {
     now: packet.nowLocal, history_start: packet.historyStart ?? 'none (no earlier conversations)',
     date_resolutions: packet.resolutions, notes: packet.notes, clarification: packet.clarification,
+    recent_message_metadata: packet.currentConversation.map(message => ({ id: message.id, role: message.role,
+      localDate: message.localDate, createdAt: message.createdAt, status: message.status, seq: message.seq,
+      source_refs: (message.evidence?.sources ?? []).filter(s => suppliedIds.has(s.sourceId)).map(s => ({
+        sourceId: s.sourceId, historicalMarker: s.n, n: sources.find(registered => registered.sourceId === s.sourceId)?.n ?? 999999,
+      })),
+    })),
     recalled: packet.recalledTurns.map(turn => ({ ...turn, sources: turn.sources.map(observation) })),
     conversation_index: packet.index, carried_sources: packet.carriedSources.map(observation),
     ...(packet.recalledTurns.length && /\b(still (correct|true|accurate|valid)|changed?|since|any (updates?|news)|up to date|outdated)\b/i.test(userText)

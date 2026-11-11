@@ -104,3 +104,15 @@ it('honors cancellation before a bounded-history clarification can emit text', a
   const result = await createRunTurn(fake.llm, config)({ packet, userText: 'Current', signal: controller.signal, emit: async e => { events.push(e); } });
   expect(result.status).toBe('interrupted'); expect(result.text).toBe(''); expect(events).toEqual([]); expect(fake.requests).toEqual([]);
 });
+it('retains distinct historical and fresh observations when a URL reuses its turn-local marker', async () => {
+  const old = historicalSource('https://example.com/pricing', 'Past price $80');
+  const t = pastTurn(repo, 'Postgres hosting', undefined, { sources: [old] });
+  const result = await run('Postgres hosting pricing changed since 3 November?', [
+    { calls: [{ args: '{"query":"current pricing","freshness":"any"}' }] }, { text: ['Current price $90 [1].'] },
+  ]);
+  const sources = result.reply.evidence!.sources;
+  expect(sources).toHaveLength(2); expect(sources.map(s => s.n)).toEqual([1,1]); expect(sources[0].sourceId).toBe(old.sourceId);
+  expect(sources[1].sourceId).not.toBe(old.sourceId); expect(sources[1].retrievedAt).toBe(clock.now().toISOString());
+  expect(sources[0].retrievedAt).toBe(old.retrievedAt); expect(result.reply.evidence!.citations[0].state).toBe('verified');
+  expect(repo.getMessage(t.assistant.id)!.evidence!.sources).toEqual([old]);
+});
