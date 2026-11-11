@@ -25,7 +25,7 @@ const selected = option('--only') ? available.filter(s => option('--only')!.spli
 const rows: EvaluationRow[] = []; let blocked: string | null = null; let provider = mock ? 'mock' : 'unconfigured';
 let codeHash = '';
 try {
-  const flags = new Set(['--mock', '--record', '--live']); const options = new Set(['--model', '--base-url', '--only', '--cassette-dir', '--provider', '--output-prefix']);
+  const flags = new Set(['--mock', '--record', '--live']); const options = new Set(['--model', '--base-url', '--only', '--cassette-dir', '--provider', '--output-prefix', '--max-completion-tokens']);
   for (let i = 0; i < args.length; i++) {
     if (flags.has(args[i])) continue;
     if (!options.has(args[i])) throw new Error('Unknown evaluation argument');
@@ -43,7 +43,7 @@ try {
   if (record && existsSync(cassetteDir) && await realpath(cassetteDir) === await realpath('evals/search-cassettes')) throw new Error('Record into a separate directory; checked-in cassettes are frozen');
   if ((live || record) && !process.env.TAVILY_API_KEY?.trim()) throw new Error('TAVILY_API_KEY absent; live search/recording unavailable');
   // Injected config values are never sent as keys: the real client/search owns authentication.
-  const configured = mock ? undefined : evaluationLlm(baseURL, model, option('--provider'));
+  const configured = mock ? undefined : evaluationLlm(baseURL, model, option('--provider'), option('--max-completion-tokens') === undefined ? undefined : Number(option('--max-completion-tokens')));
   if (configured) provider = configured.provider;
   const config = parseConfig({ LLM_API_KEY: 'injected-client', TAVILY_API_KEY: 'injected-search', LLM_MODEL: model, LLM_BASE_URL: baseURL,
     ...(process.env.LLM_REASONING_EFFORT ? { LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT } : {}) });

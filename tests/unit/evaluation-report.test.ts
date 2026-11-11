@@ -50,3 +50,18 @@ it('distinguishes synthetic, mixed, recorded and live model/search categories', 
 it('computes medians without converting missing timing into zero', () => {
   expect(median([])).toBeNull(); expect(median([1, 6, 4])).toBe(4); expect(median([1, 4])).toBe(2.5);
 });
+it('does not mark missing, duplicate or wrong-priority result rows as a complete suite', () => {
+  const complete = scenarios.map(s => row(s.id, s.priority));
+  expect(buildReport({ ...input, rows: complete }).fullSuite).toBe(true);
+  expect(buildReport({ ...input, rows: complete.slice(1) }).fullSuite).toBe(false);
+  expect(buildReport({ ...input, rows: [...complete.slice(1), complete[1]] }).fullSuite).toBe(false);
+  const wrong = complete.map(r => ({ ...r })); wrong[0].priority = wrong[0].priority === 'P0' ? 'P1' : 'P0';
+  expect(buildReport({ ...input, rows: wrong }).fullSuite).toBe(false);
+});
+
+it('uses verified Sol rates only for its exact endpoint, leaving measured bills unknown', () => {
+  const report = buildReport({ ...input, model: 'gpt-6-sol', rows: [row('D1')] });
+  expect(report.rows[0].measurements.estimatedUsd).toBeCloseTo(.003);
+  expect(report.rows[0].measurements.measuredUsd).toBeNull();
+  expect(buildReport({ ...input, model: 'gpt-6.1-sol', rows: [row('D1')] }).rows[0].measurements.estimatedUsd).toBeNull();
+});

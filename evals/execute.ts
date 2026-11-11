@@ -1,4 +1,5 @@
-import { randomUUID, createHash } from 'node:crypto';
+import crypto, { randomUUID, createHash } from 'node:crypto';
+import { syncBuiltinESMExports } from 'node:module';
 import { readFile, readdir } from 'node:fs/promises';
 import type { Config } from '../src/server/config';
 import type { RecallPacket } from '../src/shared/memory';
@@ -34,6 +35,11 @@ export async function executeScenario(scenario: Scenario, options: {
   const store = openDatabase(':memory:'); const clock = createClock(frozen);
   const fake = mock ? scriptedLlm(scenario.script) : undefined;
   const traceStart = options.providerTrace?.length ?? 0;
+  // Scenarios run sequentially in isolated databases. Freeze opaque IDs too:
+  // they appear in recall/tool context and must not vary between candidates.
+  const originalUuid = crypto.randomUUID; let idSequence = 0;
+  crypto.randomUUID = () => `00000000-0000-4000-8000-${String(++idSequence).padStart(12, '0')}`;
+  syncBuiltinESMExports();
   try {
     const repo = createRepo(store);
     let conversationId = scenario.setup?.(repo);
@@ -57,5 +63,5 @@ export async function executeScenario(scenario: Scenario, options: {
     return { id: scenario.id, priority: scenario.priority, failures, result, queries: [...cassette.queries], text: scenario.text,
       inputHash, cassetteHash, provenance: result.stats.searches ? cassette.snapshot.provenance : 'none', memory,
       trace: { requests: fake?.requests ?? options.providerTrace?.slice(traceStart) ?? [], events } };
-  } finally { store.close(); }
+  } finally { crypto.randomUUID = originalUuid; syncBuiltinESMExports(); store.close(); }
 }

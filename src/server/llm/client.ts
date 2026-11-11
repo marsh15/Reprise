@@ -12,9 +12,9 @@ export function chatToolParameters(config: Pick<Config, 'LLM_BASE_URL' | 'LLM_MO
   if (host === 'api.openai.com' && config.LLM_MODEL === 'gpt-6.1-terra') {
     throw new Error('gpt-6.1-terra requires Responses API tool calling; Reprise uses Chat Completions. Choose a compatible model explicitly.');
   }
-  if (host === 'api.openai.com' && config.LLM_MODEL === 'gpt-6-luna') {
+  if (host === 'api.openai.com' && ['gpt-6-luna', 'gpt-6-sol'].includes(config.LLM_MODEL)) {
     if (config.LLM_REASONING_EFFORT && config.LLM_REASONING_EFFORT !== 'none') {
-      throw new Error('gpt-6-luna Chat Completions tool calling requires LLM_REASONING_EFFORT=none.');
+      throw new Error(`${config.LLM_MODEL} Chat Completions tool calling requires LLM_REASONING_EFFORT=none.`);
     }
     return { reasoning_effort: 'none' as const, parallel_tool_calls: true };
   }

@@ -18,3 +18,15 @@ it('rejects credential-bearing URLs and non-US pinning without issuing a request
   expect(() => evaluationLlm('https://openrouter.ai/api/v1?key=private', 'model')).toThrow('without credentials');
   expect(() => evaluationLlm('https://openrouter.ai/api/v1', 'model', 'fireworks')).toThrow('US endpoint');
 });
+it('applies an explicit evaluation-only output cap to captured and transmitted requests without retries', async () => {
+  vi.stubEnv('LLM_API_KEY', 'test-private-sentinel');
+  const fetch = vi.fn(async (_url: unknown, _init?: RequestInit) => new Response('data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } }));
+  vi.stubGlobal('fetch', fetch);
+  const { llm, trace } = evaluationLlm('https://api.openai.com/v1', 'gpt-6-sol', undefined, 1536);
+  expect(llm.maxRetries).toBe(0);
+  const stream = await llm.chat.completions.create({ model: 'gpt-6-sol', stream: true, messages: [{ role: 'user', content: 'OK' }] });
+  for await (const _chunk of stream) { /* drain SDK stream */ }
+  expect(trace).toMatchObject([{ model: 'gpt-6-sol', max_completion_tokens: 1536 }]);
+  expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toMatchObject({ max_completion_tokens: 1536 });
+  for (const cap of [0, -1, 1.5, NaN, 16385]) expect(() => evaluationLlm('https://api.openai.com/v1', 'gpt-6-sol', undefined, cap)).toThrow('output cap');
+});

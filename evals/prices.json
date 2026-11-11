@@ -2,6 +2,15 @@
   "note": "USD per million tokens. Unconfirmed prices stay null. Estimates ignore caching discounts and search credits; never used when usage is incomplete.",
   "models": [
     {
+      "model": "gpt-6-sol",
+      "provider": "configured endpoint",
+      "input": 2,
+      "output": 10,
+      "source": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+      "checkedOn": "2026-11-11",
+      "baseURL": "https://api.openai.com/v1"
+    },
+    {
       "model": "gpt-6-luna",
       "provider": "configured endpoint",
       "input": 0.1,

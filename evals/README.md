@@ -35,6 +35,8 @@ Each row has an input hash and a cassette hash. The implementation hash covers s
 
 Research prompts specify exact queries and freshness to make replay reproducible. This measures tool use and synthesis given controlled evidence, **not unconstrained search-query quality**. D1 and the other controlled research questions now explicitly specify freshness any rather than leaving a required cassette field to model choice. F2 explicitly requests current research as well as historical abstention. These changed inputs and stricter citation checks make new results non-equivalent to the prior baseline. The original canonical cassette payloads are unchanged. A normalized `query|freshness` miss fails visibly; replay never falls back to live search. Invalid/non-normalized cassette keys fail before generation. Do not add aliases that quietly change the evidence returned.
 
+The sequential evaluator freezes opaque UUIDs inside each isolated scenario and restores normal UUID generation afterward. This keeps record IDs in actual recall/tool messages identical between candidates. Focused tests compare complete request bodies on repeated scripted runs. The application continues to generate normal UUIDs.
+
 ## Capture actual search evidence
 
 Configure `LLM_API_KEY` for the explicit OpenAI endpoint/model, and `TAVILY_API_KEY`, privately in the local ignored `.env`. OpenRouter evaluations instead use `OPENROUTER_API_KEY` and an explicit base URL/US provider. Never put keys in shell commands, reports, Git or chat. The injected config placeholders inside the harness never authenticate a provider request; the real client and search adapter use only their intended environment credentials.
@@ -82,9 +84,10 @@ Costs use provider token usage × dated rates in `prices.json`, ignore cache dis
 
 ## Pending model bake-off
 
-Keep the provisional default unchanged until owner approval. Planned candidates only:
+Keep the provisional default unchanged until owner approval. Approved comparison candidates only:
 
 - `gpt-6-luna` at the explicit OpenAI endpoint, with `LLM_API_KEY`.
+- `gpt-6-sol` at the same endpoint, additionally approved for the controlled comparison in [MODEL-COMPARISON.md](../docs/MODEL-COMPARISON.md). Both Sol and Luna require `reasoning_effort: none` for Chat Completions tools; the adapter preserves it and rejects incompatible overrides. `gpt-6.1-sol` is different and is not approved here. Verified Sol rates are $2/M input and $10/M output tokens, ignoring cache discounts.
 - `gpt-6.1-terra` at OpenAI, with the same credential prerequisite. The existing Chat Completions capability guard rejects its documented Responses-only tool path. This remains an explicit mismatch, not a reason to substitute a model or migrate architecture.
 - `deepseek/deepseek-v4.1-flash` at OpenRouter, pinned to `fireworks/us`, with usable `OPENROUTER_API_KEY` credits. Fallback is disabled. The inherited explicit-parallel-parameter omission remains documented in M2; generation of parallel calls is unverified.
 
@@ -92,6 +95,7 @@ After credentials, smoke each genuinely available candidate before spending a fu
 
 ```bash
 npm run smoke:llm -- --model gpt-6-luna --base-url https://api.openai.com/v1
+npm run smoke:llm -- --model gpt-6-sol --base-url https://api.openai.com/v1 --output-prefix evals/results/sol-smoke
 npm run smoke:llm -- --model gpt-6.1-terra --base-url https://api.openai.com/v1
 npm run smoke:llm -- --model deepseek/deepseek-v4.1-flash --base-url https://openrouter.ai/api/v1 --provider fireworks/us
 # Use identical frozen inputs for every available compatible candidate:
@@ -102,6 +106,10 @@ npm run eval -- --live --only C1,D1,F1
 ```
 
 To use reviewed recordings, add the same `--cassette-dir` to **both** full-suite replay commands. The comparison tool rejects mocked, blocked, incomplete, duplicate or unplanned candidates and different implementation/scenario/cassette hashes. It outputs ignored JSON and Markdown comparisons without changing any configuration. Do not use it on the two currently blocked reports.
+
+The smoke script stops at its first failed probe before further calls, caps responses at 256 output tokens, and records validated token counts and estimated cost. `--output-prefix` retains sanitized requests, answers and calls privately under ignored results. Evaluation calls have no automatic retries. Pass the same explicit `--max-completion-tokens 1536` to both candidates for a budgeted comparison; this cap appears in transmitted requests and captures without changing application behavior. Track cumulative usage and reserve budget before each stage: this is not a provider-side billing cap. Missing usage remains unknown.
+
+Final eligible comparisons require every canonical scenario exactly once with correct priority, consistent pass counts/rates, nonempty input/evidence hashes and request evidence. Sol/Luna request models and reasoning settings must match their report, their initial prompts must agree, and their initial parameters may differ only by model. Focused subsets remain ineligible for final ranking.
 
 Choose highest P0 rate, then lower median total latency, then lower estimated cost. Missing tie-break metrics leave a tie unresolved. Report P1, TTFT, tokens, cost basis, tool reliability and citation integrity too. Human reviewers assess memory/temporal correctness, price comparability, claim support and conversational quality from full traces. No automatic LLM judge is used. Present the evidence and request owner approval of a winner; these commands never select the default.
 

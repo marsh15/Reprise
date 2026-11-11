@@ -21,7 +21,9 @@ export function buildReport(input: {
     return { planned: selected.filter(s => s.priority === priority).length, attempted: attempted.length, passed, passRate: attempted.length ? passed / attempted.length : null };
   };
   const p0 = rate('P0'); const p1 = rate('P1');
-  const fullSuite = selected.length === scenarios.length && scenarios.every(s => selected.some(p => p.id === s.id));
+  const fullSuite = selected.length === scenarios.length && rows.length === scenarios.length
+    && new Set(rows.map(r => r.id)).size === scenarios.length
+    && scenarios.every(s => selected.some(p => p.id === s.id) && rows.some(r => r.id === s.id && r.priority === s.priority));
   const provenance = [...new Set(rows.map(r => r.provenance).filter(p => p !== 'none'))];
   const category = mock ? 'mock_agent_integration' : !rows.length ? 'unexecuted' : mode === 'live' ? 'fully_live'
     : mode === 'record' ? 'live_llm_search_recording' : provenance.length === 1 && provenance[0] === 'recorded' ? 'recorded_search_live_llm'
