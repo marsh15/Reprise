@@ -66,7 +66,7 @@ There must be exactly one `=` in the entire answer. The equation occupies one se
  = <Currency> <SignedResult>/<FullDenominator>/<Period> [optional direction]
 ```
 
-The line breaks above show components only: the equation itself is on one line/in one cell. Currency and amount have one intervening space. The subtractor is `minus`, Unicode `−`, or ASCII `-`, surrounded by spaces. ` = ` has spaces. A trailing full stop is optional. The optional literal prefixes are `Calculated listed-price difference: ` and `Calculated listed monthly subscription difference: `.
+The line breaks above show components only: the equation itself is on one line/in one cell. Currency and amount have one intervening space. The subtractor is `minus`, Unicode `−`, or ASCII `-`, surrounded by spaces. ` = ` has spaces. A trailing full stop is optional. The only optional literal prefix is `Calculated listed-price difference: `. The specialized `Calculated listed monthly subscription difference: ` prefix was removed after the independent audit because stripping it could hide unsupported semantic claims.
 
 Identity labels contain ASCII letters/digits/spaces/hyphens, begin with a letter, and must equal the reviewed `<product> <plan>` when those fields are known. There are no alias guesses. Units use one to four slash components of lowercase letters/digits/hyphens, including the final pricing period. Known denominator and period must match the entire operand/result unit. Cross-product operands can have different named plans; a historical/current comparison requires the same established product and plan. Known incompatible currency, complete denominator, pricing period, billing period, commitment or standard/introductory offer rejects comparison support.
 
@@ -74,7 +74,7 @@ Amounts have an optional leading sign, ordinary decimal notation, up to 14 integ
 
 Each operand's marker immediately follows its full monetary unit in the equation. A grouped trailing reference, neighboring sentence, adjacent table cell, later disclaimer or bibliography cannot supply it. Missing individual markers on an otherwise recognized equation produce a direct-coverage failure. Unsupported reference forms remain review-required. No table row label supplies an operand or reference.
 
-The supported table form has leading/trailing unescaped pipes and an entire equation in one cell, for example `| Difference | <equation> |`. Cells split only at unescaped pipes. Sentence boundaries are terminal `.`, `!` or `?` followed by whitespace, retaining decimal points and never moving references. The old citation sentence splitter is not reused. Marker-adjacent conjunction splitting is absent.
+The supported table form has leading/trailing unescaped pipes and an entire equation in one cell, for example `| Difference | <equation> |`. Cells split only at unescaped pipes: an even number of consecutive preceding backslashes (including zero) leaves a boundary, while an odd number makes the pipe literal cell content. Backslashes and escaped pipes are retained as content. A line beginning with a pipe must have a distinct real closing boundary; an escaped final pipe, unclosed cell or lone boundary returns `review_required` / `unsupported_table_form` before arithmetic. No substantive final segment is discarded. This is a narrow row recognizer, not a general Markdown parser. Sentence boundaries are terminal `.`, `!` or `?` followed by whitespace, retaining decimal points and never moving references. The old citation sentence splitter is not reused. Marker-adjacent conjunction splitting is absent.
 
 Optional direction is exactly `more for <left product>`, `less for <left product>`, `more than <right product>`, `less than <right product>`, or `equal`. Positive subtraction supports more, negative supports less, zero supports equal and neither more nor less. A wrong named subject also fails direction. This intentionally supports signed `-10 ... less`, rather than an unsigned magnitude presented as the result of a negative subtraction.
 
@@ -144,7 +144,7 @@ Mutation tests change raw answer amount, result, vendor, markers, direction and 
 
 Self-review corrected an overbroad prose coverage hint that could mistake a heading plus a cited single price for a derived claim. It also distinguishes unknown historical plan from known incompatibility. Pricing period, billing period and commitment are separate; unknown currency retains decimal evidence without inventing its minor-unit scale.
 
-The explicit simplification pass retained two anchored money forms and one binary subtraction. Direction checking was flattened; lexical fractional precision was capped at three; no parser framework, AST, vendor alias system, semantic extractor, automatic operand selector, service, tool, dependency or integration into canonical scoring was added. Core recognizer logic stays under 150 lines. Fixed historical gold and its optional offline audit are separate from the recognizer. No consequential inconsistency in the approved design required another Opus review; this phase uses deterministic tests and self-review as requested.
+The explicit simplification pass retained two anchored money forms and one binary subtraction. Direction checking was flattened; lexical fractional precision was capped at three; no parser framework, AST, vendor alias system, semantic extractor, automatic operand selector, service, tool, dependency or integration into canonical scoring was added. The core recognizer remains deliberately small, including the later boundary-parity correction. Fixed historical gold and its optional offline audit are separate from the recognizer. No consequential inconsistency in the approved design required another Opus review; this phase uses deterministic tests and self-review as requested.
 
 False negatives are deliberate: natural prose, multiple equations, rich Markdown, aliases, unsupported currencies/units and most otherwise harmless surrounding text require review. Partial coverage hints miss other wordings. False-positive risk remains if trusted gold is semantically wrong, its reviewer omitted a qualifier/ambiguity, or upstream supplied a persisted excerpt instead of the real model-visible excerpt. The checker compares supplied snapshots and exact spans; it cannot independently establish what was actually sent or whether the source is true. Checksums do not solve that trust problem. No general contradiction or effective-date recognizer is claimed.
 
@@ -179,3 +179,47 @@ Authorized destination: `origin/main`, appending to baseline `21ee08c`.
 Staged path/count, whitespace and credential-pattern checks passed. No pull request was created. Only new evaluation code, curated synthetic gold/tests, the evaluation README and this checkpoint are included. No generated reports, private captures, secrets or local SQLite files are committed. The independent frontend redesign worktree/branch is untouched.
 
 Stop after this checkpoint. Keep evaluation-only diagnostics available for manual analysis. Request explicit owner approval of a separately scoped proposal before any production changes. No runtime winner is selected and Reprise is not declared submission-ready.
+
+## Independent audit maintenance closure — 12 November 2026
+
+The owner approved exactly two corrections following the independent Astra Medium audit, starting from clean `main` at `c38d12d1bf4f827c177874d1ad4d04d2ca29a9f7`. The findings and counterexamples supplied in the maintenance request were checked against the actual evaluator, both original prototype test files, parser/contract helpers and citation-support design. The untouched baseline passed **554/554 tests in 40 files**. No new independent review cycle or provider request was made.
+
+**Escaped closing pipe truncation: resolved.** The original code checked `endsWith('|')`, split only on pipes not immediately preceded by a backslash, then called `slice(1, -1)`. With an escaped final pipe there was no terminal split boundary, so that slice removed the substantive last cell. The demonstrated answer was:
+
+```text
+| Birch Standard USD 35/subscription/month [2] minus Aster Standard USD 25/subscription/month [1] = USD 10/subscription/month more for Birch | The price changed on 2026-11-11. \|
+```
+
+Before correction this returned `supported_bounded_calculation`, silently dropping the effective-date claim. Contradictory cheaper-than prose and an unavailable `[9]` reference in that final cell reproduced the same false support. The bounded row scanner now counts consecutive backslashes, retains every content segment and accepts only an actual closing boundary. These malformed rows return `review_required`, arithmetic `not_checked`, with `unsupported_table_form`. Valid rows retain their last cell; unreviewed note text keeps a correct equation under comparison review. Ordinary closing delimiters still allow supported subtraction.
+
+**Semantically contradictory monthly-subscription prefix: resolved by simplification.** The original evaluator stripped the specialized prefix before parsing or checking units. With independently supplied, fully reviewed annual per-seat evidence, this answer incorrectly returned full bounded support:
+
+```text
+Calculated listed monthly subscription difference: Birch Standard USD 35/seat/year [2] minus Aster Standard USD 25/seat/year [1] = USD 10/seat/year more for Birch
+```
+
+The specialized prefix is no longer recognized, including on otherwise compatible monthly-subscription equations. It returns `review_required` / `unsupported_claim_form`, with arithmetic `not_checked`. The generic `Calculated listed-price difference: ` prefix remains supported without adding denominator or period assertions. No new semantic inference or dimension normalization was added. The older design document's specialized-prefix example is historical proposal text; the current supported syntax is defined above.
+
+**Regression quality and evidence.** The original escape tests exercised an internal escaped pipe in an unsupported operand label and neighboring-cell citation isolation; they did not exercise escaped terminal boundaries, consecutive-backslash parity or prefix/dimension contradictions. The new `tests/unit/derived-citations-audit.test.ts` adds **26 cases** with literal expected classifications and minor-unit constants:
+
+- Three escaped-terminal controls: unsupported effective date, contradictory comparison and unavailable reference.
+- One ordinary closing-delimiter positive and one legitimate escaped-pipe note cell that preserves the equation but requires comparison review.
+- Eight parity cases: one, two, three and four backslashes before internal and terminal pipes. These distinguish escaped content from real boundaries and ensure even-parity content is retained.
+- Five malformed-row controls: missing close, escaped close, unclosed trailing text, malformed additional row and a lone boundary.
+- Eight prefix controls: generic and removed specialized prefixes across subscription/month, seat/year, seat/month and subscription/year, each with consistent independent source text and reviewed bindings.
+
+Before evaluator edits, the new suite had **18 failures and 8 passes**, including both exact audit counterexamples returning false full support. After correction, all **130/130 prototype tests in three files** pass: the original 104 unchanged tests plus these 26 regressions. Existing arithmetic, direction, source identity, currency, precision and commercial-dimension controls retain their intended results. No existing assertions were weakened.
+
+Final maintenance verification after the code edits:
+
+- `npm run typecheck`: passed, no diagnostics.
+- `npm test`: **580/580 tests**, **41/41 files**, 10.86 seconds; zero final failures.
+- `npm run build`: passed, 377 modules, unchanged CSS/JS asset names and sizes recorded in the original checkpoint.
+- `npm run eval -- --mock`: **23/23**, unchanged 11 P0 / 12 P1 denominator.
+- `npm run eval -- --mock --only R1,R2,R3`: **3/3**.
+- `npx vitest run tests/unit/derived-citations*.test.ts`: **130/130**, three files, including all 26 new focused regressions.
+- `git diff --check` and the unchanged-path comparison against `c38d12d`: passed. Only the evaluator, new audit regression file and this document changed. The two original test files, production tree, canonical assertions/scenarios, cassettes and dependency manifests are unchanged; no production import points to the prototype.
+
+New ignored mock reports are `evals/results/2026-11-11T19-04-39.080Z-mock-ad3ae570.{json,md}` and `evals/results/2026-11-11T19-04-38.755Z-mock-8b82e678.{json,md}`. Existing saved generation reports were not rewritten. The parallel frontend-design worktree was not accessed or modified. The authorized delivery is one plain-English maintenance commit pushed to `origin/main`; the final handoff records its exact SHA and working-tree status.
+
+**Remaining trust boundary and engineering decision.** Reviewed gold must still correctly interpret the exact model-visible source span, identity and all relevant qualifiers. A checksum detects staleness; it cannot establish source truth, authenticate review, detect omitted terms or prove semantic entailment. Rich Markdown and arbitrary prose remain outside the narrow recognizer, and subtraction cannot establish effective dates. This patch adds no automatic semantic verification or operand extraction. **Close the citation-prototype workstream and retain evaluation-only diagnostics; do not integrate this prototype into production.** Return focus to frontend integration, real-model P0/P1 acceptance, human evidence review and minimi submission readiness under their separate scopes.

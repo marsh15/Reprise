@@ -16,6 +16,21 @@ function minorUnits(text: string, precision: number): bigint | null {
   return value > LIMITS.minor || value < -LIMITS.minor ? null : value;
 }
 
+function splitClaimLine(line: string): string[] | null {
+  if (!line.startsWith('|')) return [line];
+  const cells: string[] = [];
+  let start = 1; let backslashes = 0;
+  for (let i = 1; i < line.length; i++) {
+    const char = line[i];
+    if (char === '|' && backslashes % 2 === 0) {
+      cells.push(line.slice(start, i).trim()); start = i + 1;
+    }
+    backslashes = char === '\\' ? backslashes + 1 : 0;
+  }
+  // Require a real closing boundary; never discard an unclosed substantive cell.
+  return start === line.length && cells.length ? cells : null;
+}
+
 export function evaluateDerivedCitation(raw: unknown): DerivedDiagnostic {
   const output: DerivedDiagnostic = { outcome: 'review_required', arithmetic: 'not_checked', direction: 'not_checked',
     diagnostics: [], scope: 'Listed-amount subtraction only; no source-truth or effective-date verification.' };
@@ -39,12 +54,12 @@ export function evaluateDerivedCitation(raw: unknown): DerivedDiagnostic {
 
   // A line or an unescaped table cell is the outer boundary. Decimal points stay intact.
   // Terminal sentence punctuation followed by whitespace is a boundary; markers never move.
-  const cells = answer.split(/\r?\n/).flatMap(line => {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith('|')) return [trimmed];
-    if (!trimmed.endsWith('|')) return [trimmed];
-    return trimmed.split(/(?<!\\)\|/).slice(1, -1).map(c => c.trim());
-  }).flatMap(cell => cell.split(/(?<=[.!?])\s+/)).filter(Boolean);
+  const cells: string[] = [];
+  for (const line of answer.split(/\r?\n/)) {
+    const row = splitClaimLine(line.trim());
+    if (!row) return finish('review_required', 'unsupported_table_form', 'Table rows require leading and trailing unescaped boundary pipes; no unclosed cell is discarded.');
+    cells.push(...row.flatMap(cell => cell.split(/(?<=[.!?])\s+/)).filter(Boolean));
+  }
   const equationCells = cells.filter(cell => cell.includes('='));
   if (equationCells.length !== LIMITS.equations || (answer.match(/=/g)?.length ?? 0) !== LIMITS.equations) {
     // Coverage hints for unsupported prose are diagnostics only, never reconstructed claims.
@@ -56,8 +71,7 @@ export function evaluateDerivedCitation(raw: unknown): DerivedDiagnostic {
     return finish('review_required', 'unsupported_claim_form', 'Require exactly one explicit signed subtraction equation in one claim boundary. Prose is not reconstructed.');
   }
   const claimText = equationCells[0];
-  const equation = claimText.replace(/\.$/, '').replace(/^Calculated listed-price difference: /, '')
-    .replace(/^Calculated listed monthly subscription difference: /, '');
+  const equation = claimText.replace(/\.$/, '').replace(/^Calculated listed-price difference: /, '');
   const [expression, total] = equation.split(' = ');
   const parts = expression?.split(/ (?:minus|−|-) /) ?? [];
   const left = parts.length === 2 ? match(operand, parts[0]) : undefined;
