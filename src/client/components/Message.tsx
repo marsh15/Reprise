@@ -1,11 +1,23 @@
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Citation } from './Citation';
+import { ResearchStatus } from './ResearchStatus';
+import { citationMarkdown } from '../citationMarkdown';
 import type { MessageDTO } from '../../shared/types';
 
-export function Message({ message }: { message: MessageDTO }) {
+export function Message({ message, running = false }: { message: MessageDTO; running?: boolean }) {
   return <article className={`message ${message.role}`} aria-label={message.role === 'user' ? 'Your message' : 'Reprise answer'}>
     <div className="message-label">{message.role === 'user' ? 'You' : 'Reprise'}</div>
-    {message.role === 'user' ? <p>{message.content}</p> : <Markdown remarkPlugins={[remarkGfm]} components={{ a: props => <a {...props} target="_blank" rel="noopener noreferrer" /> }}>{message.content}</Markdown>}
+    {message.role === 'assistant' && message.evidence && <ResearchStatus searches={message.evidence.searches} sources={message.evidence.sources} running={running && message.evidence.searches.some(s => s.status === 'error' && !s.error)} />}
+    {message.role === 'user' ? <p>{message.content}</p> : <Markdown remarkPlugins={[remarkGfm, citationMarkdown]} urlTransform={url => /^(https?:\/\/|#citation-\d+$)/i.test(url) ? url : ''} components={{ a: ({ href, children, node: _node, ...props }) => {
+      const marker = href?.match(/^#citation-(\d+)$/);
+      if (!marker) return <a {...props} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+      const n = Number(marker[1]);
+      const source = message.evidence?.sources.find(s => s.n === n);
+      const citation = message.evidence?.citations.find(c => c.marker === n) ?? (running && source ? { marker: n, sourceId: source.sourceId, state: 'unchecked' as const, detail: null } : undefined);
+      if (!citation && running) return <span className="citation-pill">[{n}]</span>;
+      return <Citation marker={n} citation={citation} source={source} />;
+    } }}>{message.content}</Markdown>}
     {message.status !== 'complete' && <small>{message.status === 'interrupted' ? 'Stopped' : 'Answer failed'}</small>}
   </article>;
 }

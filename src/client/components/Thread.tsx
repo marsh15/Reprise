@@ -75,9 +75,9 @@ export function Thread({ conversationId, onCreated, onChange }: { conversationId
     <div className="thread" aria-busy={state.busy}>
       {loading ? <p>Loading conversation…</p> : state.messages.length === 0 ? <div className="empty">
         <p className="eyebrow">A conversation worth coming back to</p><h1>Ask me anything.</h1>
-        <p>Start a conversation. Your chats are saved on this device so you can come back to them.</p>
-        {['Explain SQLite transactions', 'Help me plan a small project', 'What makes a good API?'].map(text => <button key={text} onClick={() => void send(text)}>{text}</button>)}
-      </div> : state.messages.map(message => <Message key={message.id} message={message} />)}
+        <p>I search the web when it helps and cite what I find. Your chats and sources are saved on this device.</p>
+        {["What's new in the latest Postgres release?", 'Compare Neon and Supabase pricing for a small team', 'What makes a good API?'].map(text => <button key={text} onClick={() => void send(text)}>{text}</button>)}
+      </div> : state.messages.map(message => <Message key={message.id} message={message} running={state.busy && message.id === state.assistantId} />)}
       {state.busy && <p role="status">Writing…</p>}
       {state.error && <p role="alert" className="error">{state.error}</p>}
       {!state.busy && retryable && <button onClick={() => void send(lastUser.content, lastUser)}>Retry answer</button>}
