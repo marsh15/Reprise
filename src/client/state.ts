@@ -16,6 +16,9 @@ export function chatReducer(state: ChatState, action: Action): ChatState {
           if (!messages.some(m => m.id === event.assistantMessageId)) messages.push({ id: event.assistantMessageId, role: 'assistant', content: '', status: 'complete', createdAt: new Date().toISOString(), localDate: '', seq: messages.length + 1, replyTo: event.userMessageId });
           return { ...state, messages, assistantId: event.assistantMessageId };
         }
+        case 'search.started': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, evidence: { searches: [...(m.evidence?.searches ?? []), ...event.searches], sources: m.evidence?.sources ?? [], citations: m.evidence?.citations ?? [] } } : m) };
+        case 'search.finished': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, evidence: { searches: [...(m.evidence?.searches ?? []).filter(s => s.id !== event.search.id), event.search], sources: [...(m.evidence?.sources ?? []), ...event.sources], citations: m.evidence?.citations ?? [] } } : m) };
+        case 'citations': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, evidence: { searches: m.evidence?.searches ?? [], sources: event.sources ?? m.evidence?.sources ?? [], citations: event.citations } } : m) };
         case 'answer.delta': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, content: m.content + event.text } : m) };
         case 'answer.reset': return { ...state, messages: state.messages.map(m => m.id === state.assistantId ? { ...m, content: '' } : m) };
         case 'turn.completed': return { ...state, busy: false };

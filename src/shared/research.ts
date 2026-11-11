@@ -4,7 +4,7 @@ export const searchRequestSchema = z.object({
   query: z.string().trim().min(1).max(300), freshness: z.enum(['any', 'day', 'week', 'month', 'year']),
 }).strict();
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
-export const searchResultSchema = z.object({ url: z.string(), title: z.string().nullable(), content: z.string(), publishedAt: z.string().nullable() });
+export const searchResultSchema = z.object({ url: z.string(), title: z.string().nullable(), content: z.string(), publishedAt: z.string().nullable(), retrievedAt: z.iso.datetime().optional(), fixture: z.boolean().optional() });
 export const searchOutcomeSchema = z.object({
   status: z.enum(['ok', 'empty', 'error', 'timeout']), results: z.array(searchResultSchema),
   durationMs: z.number().nonnegative(), error: z.string().optional(),

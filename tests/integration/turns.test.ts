@@ -30,7 +30,7 @@ async function collect(response: Response) { const events: TurnEvent[] = []; awa
 
 it('serves CRUD and SSE, with final event emitted only after persistence', async () => {
   const events = await collect(await post(input()));
-  expect(events.map(e => e.type)).toEqual(['turn.started', 'answer.delta', 'answer.delta', 'turn.completed']);
+  expect(events.map(e => e.type)).toEqual(['turn.started', 'answer.delta', 'answer.delta', 'citations', 'turn.completed']);
   const conversation = repo.listConversations()[0];
   const detail = await (await app.request(`/api/conversations/${conversation.id}`)).json();
   expect(detail.messages.map((m: { content: string }) => m.content)).toEqual(['Hello', 'Hello world']);

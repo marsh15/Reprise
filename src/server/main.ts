@@ -21,7 +21,7 @@ async function main() {
   if (production && !existsSync('dist/index.html')) throw new Error('Build the client first: npm run build.');
   const store = openDatabase(config.REPRISE_DB_PATH);
   const repo = createRepo(store);
-  const turns = createTurnService(repo, createRunTurn(createLlm(config), config), clock, config.LLM_MODEL);
+  const turns = createTurnService(repo, createRunTurn(createLlm(config), config, { now: clock.now }), clock, config.LLM_MODEL);
   const apiListener = getRequestListener(createApp(config, clock, { repo, turns }).fetch);
   const httpServer = createServer();
   let vite: import('vite').ViteDevServer | undefined;

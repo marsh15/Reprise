@@ -62,9 +62,10 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
         try {
           await send({ type: 'turn.started', conversationId: user.conversationId, userMessageId: user.id, assistantMessageId, traceId });
           const history = repo.getConversationMessages(user.conversationId, 20, user.id);
-          const result = await runTurn({ messages: history, signal: controller.signal, emit: send });
+          const result = await runTurn({ messages: history, signal: controller.signal, emit: send, timezone: input.timezone, historyStart: repo.historyStart(), carriedSources: repo.carriedSources(history) });
           if (controller.signal.aborted) result.status = 'interrupted';
           repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, now: clock.now(), model });
+          if (result.evidence) await send({ type: 'citations', citations: result.evidence.citations, sources: result.evidence.sources });
           // Cancellation via endpoint keeps SSE connected, so its terminal event still reaches the client.
           const terminal = result.status === 'complete'
             ? { type: 'turn.completed' as const, assistantMessageId, stats: result.stats }
