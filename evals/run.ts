@@ -13,6 +13,7 @@ import { createSearchWeb } from '../src/server/search/tavily';
 import { scriptedLlm } from '../tests/helpers/fakeLlm';
 import { cassetteSearch } from './cassettes';
 import { evaluationLlm } from './provider';
+import type { RecallPacket } from '../src/shared/memory';
 import { scenarios, deferred } from './scenarios';
 import prices from './prices.json';
 if (existsSync('.env')) loadEnvFile('.env');
@@ -24,14 +25,14 @@ const baseURL = option('--base-url') || process.env.LLM_BASE_URL || 'https://api
 const selected = scenarios.filter(s => !option('--only') || option('--only')!.split(',').includes(s.id));
 const frozen = '2026-11-11T08:30:00Z';
 const clock = createClock(frozen);
-const rows: { id: string; priority: string; failures: string[]; result: TurnResult; queries: string[]; text: string; inputHash: string }[] = [];
+const rows: { id: string; priority: string; failures: string[]; result: TurnResult; queries: string[]; text: string; inputHash: string; memory: RecallPacket }[] = [];
 let blocked: string | null = null; let provider = 'mock';
 let llm: ReturnType<typeof evaluationLlm>['llm'] | undefined;
 try {
   if (live && record) throw new Error('--live and --record are separate modes');
   if (record && option('--cassette-dir') && resolve(option('--cassette-dir')!) === resolve('evals/search-cassettes')) throw new Error('Record into a separate directory; checked-in cassettes are frozen');
   if (mock && (live || record)) throw new Error('--mock cannot be combined with live or record');
-  if (!selected.length) throw new Error('No M2 scenarios selected; recall scenarios are deferred to M3');
+  if (!selected.length) throw new Error('No matching implemented scenarios selected');
   if ((live || record) && !process.env.TAVILY_API_KEY?.trim()) throw new Error('TAVILY_API_KEY absent; live search/recording unavailable');
   if (record && !option('--cassette-dir')) throw new Error('--record requires --cassette-dir; frozen checked-in inputs must not be overwritten');
   if (!mock) { const selectedProvider = evaluationLlm(baseURL, model, option('--provider')); llm = selectedProvider.llm; provider = selectedProvider.provider; }
@@ -47,22 +48,22 @@ try {
       const llmForTurn = mock ? scriptedLlm(scenario.script).llm : llm!;
       const config = parseConfig({ LLM_API_KEY: 'not-used-client-already-configured', TAVILY_API_KEY: 'not-used-injected-search', LLM_MODEL: model,
         LLM_BASE_URL: baseURL, ...(process.env.LLM_REASONING_EFFORT ? { LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT } : {}) });
-      let conversationId: string | undefined;
+      let conversationId = scenario.setup?.(repo);
       for (const pair of scenario.history ?? []) {
-        const user = conversationId ? repo.insertUserMessage({ conversationId, clientMessageId: randomUUID(), text: pair.user, timezone: 'Asia/Kolkata', now: clock.now() })
-          : repo.startConversation({ clientMessageId: randomUUID(), text: pair.user, timezone: 'Asia/Kolkata', now: clock.now() });
+        const user = conversationId ? repo.insertUserMessage({ conversationId, clientMessageId: randomUUID(), text: '[Demo evaluation] ' + pair.user, timezone: 'Asia/Kolkata', now: clock.now() })
+          : repo.startConversation({ clientMessageId: randomUUID(), text: '[Demo evaluation] ' + pair.user, timezone: 'Asia/Kolkata', now: clock.now(), origin: 'fixture' });
         conversationId = user.conversationId;
-        repo.insertAssistantTurn({ id: randomUUID(), user, text: pair.assistant, status: 'complete', now: clock.now(), model: 'fixture', stats: { searches: 0, sources: 0, latencyMs: 0, ttftMs: null, inputTokens: 0, outputTokens: 0 } });
+        repo.insertAssistantTurn({ id: randomUUID(), user, text: '[Demo evaluation] ' + pair.assistant, status: 'complete', now: clock.now(), model: 'fixture', stats: { searches: 0, sources: 0, latencyMs: 0, ttftMs: null, inputTokens: 0, outputTokens: 0 } });
       }
-      let result!: TurnResult;
+      let result!: TurnResult; let memory!: RecallPacket;
       const run = createRunTurn(llmForTurn, config, { search: cassette.search, now: clock.now });
-      const service = createTurnService(repo, async input => { result = await run(input); return result; }, clock, model);
+      const service = createTurnService(repo, async input => { memory = input.packet!; result = await run(input); return result; }, clock, model);
       const turn = service.prepare({ conversationId, clientMessageId: randomUUID(), text: scenario.text, timezone: 'Asia/Kolkata' });
       await turn.run(async () => {});
       await cassette.flush();
-      const failures = [...scenario.assert(result), ...cassette.misses.map(q => `cassette miss: ${q}`)];
-      const inputHash = createHash('sha256').update(scenario.text + JSON.stringify(scenario.history) + await readFile(cassettePath, 'utf8')).digest('hex');
-      rows.push({ id: scenario.id, priority: scenario.priority, failures, result, queries: cassette.queries, text: scenario.text, inputHash });
+      const failures = [...scenario.assert(result), ...(scenario.assertMemory?.(memory) ?? []), ...cassette.misses.map(q => `cassette miss: ${q}`)];
+      const inputHash = createHash('sha256').update(scenario.text + JSON.stringify(scenario.history) + await readFile('scripts/fixtures/demo.json', 'utf8') + await readFile(cassettePath, 'utf8')).digest('hex');
+      rows.push({ id: scenario.id, priority: scenario.priority, failures, result, queries: cassette.queries, text: scenario.text, inputHash, memory });
       console.log(`${mock ? 'MOCK' : live ? 'LIVE' : record ? 'RECORD' : 'REPLAY'} ${scenario.id}: ${failures.length ? 'FAIL: ' + failures.join('; ') : 'PASS'}`);
       if (result.error?.startsWith('llm_http_')) { blocked = `Provider rejected request: ${result.error}. Remaining scenarios untested.`; break; }
     } finally { store.close(); }
@@ -86,11 +87,11 @@ const metrics = mock ? null : {
   toolCallReliability: !tested.length ? null : { calls: rows.reduce((n, row) => n + (row.result.stats.toolCalls ?? 0), 0), invalidCalls: rows.reduce((n, row) => n + (row.result.stats.invalidToolCalls ?? 0), 0), duplicateQueries: rows.reduce((n, row) => n + (row.result.evidence?.searches.filter(s => s.error === 'duplicate').length ?? 0), 0), researchScenarios: rows.filter(row => row.result.stats.searches > 0).length,
     completedWithCitations: rows.filter(row => row.result.stats.searches > 0 && row.result.status === 'complete' && row.result.evidence?.citations.length).length },
 };
-const report = { model: mock ? 'scripted fake (not a model benchmark)' : model, provider, baseURL, frozen, mode: mock ? 'mock' : live ? 'live' : record ? 'record' : 'replay', blocked, metrics, deferredToM3: deferred, untested: selected.filter(s => !tested.some(r => r.id === s.id)).map(s => s.id), rows };
+const report = { model: mock ? 'scripted fake (not a model benchmark)' : model, provider, baseURL, frozen, mode: mock ? 'mock' : live ? 'live' : record ? 'record' : 'replay', blocked, metrics, deferredToM4: deferred, untested: selected.filter(s => !tested.some(r => r.id === s.id)).map(s => s.id), rows };
 await mkdir('evals/results', { recursive: true });
 const filename = `evals/results/${createClock().now().toISOString().replaceAll(':', '-')}-${mock ? 'mock' : model.replaceAll('/', '-')}`;
 await writeFile(filename + '.json', JSON.stringify(report, null, 2) + '\n');
-await writeFile(filename + '.md', `# M2 evaluation\n\nMode: ${report.mode}; model: ${report.model}; provider: ${provider}\n\n${blocked ? 'Blocked: ' + blocked : 'Completed selected scenarios.'}\n\n${mock ? 'Scripted assertions validate the harness, not model quality.' : JSON.stringify(metrics, null, 2)}\n\n` + rows.map(row => `## ${row.id}: ${row.result.error?.startsWith('llm_http_') ? 'UNTESTED (provider blocked)' : row.failures.length ? 'FAIL' : 'PASS'}\n\n${row.failures.join('; ')}\n\n${row.result.text}\n\nInput SHA-256: ${row.inputHash}\n`).join('\n'));
+await writeFile(filename + '.md', `# Reprise evaluation\n\nMode: ${report.mode}; model: ${report.model}; provider: ${provider}\n\n${blocked ? 'Blocked: ' + blocked : 'Completed selected scenarios.'}\n\n${mock ? 'Scripted assertions validate the harness, not model quality.' : JSON.stringify(metrics, null, 2)}\n\n` + rows.map(row => `## ${row.id}: ${row.result.error?.startsWith('llm_http_') ? 'UNTESTED (provider blocked)' : row.failures.length ? 'FAIL' : 'PASS'}\n\n${row.failures.join('; ')}\n\n${row.result.text}\n\nInput SHA-256: ${row.inputHash}\n`).join('\n'));
 console.log(`${blocked ? 'BLOCKED: ' + blocked + '\n' : ''}Report: ${filename}.{json,md}`);
 if (blocked) process.exitCode = 2;
 else if (rows.some(row => row.failures.length)) process.exitCode = 1;

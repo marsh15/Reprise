@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored illustrative fixture, not live observation or historical pricing.",
+  "entries": {
+    "postgres hosting current pricing|any": {
+      "status": "ok",
+      "results": [{ "url": "https://supabase.com/pricing", "title": "[Demo] Supabase pricing snapshot", "content": "[Synthetic evaluation fixture — not a live observation] Supabase Pro illustrative price $25 per project per month.", "publishedAt": null, "retrievedAt": "2026-11-11T08:30:00Z", "fixture": true }],
+      "durationMs": 12
+    }
+  }
+}

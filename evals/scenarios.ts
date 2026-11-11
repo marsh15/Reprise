@@ -1,6 +1,10 @@
 import type { TurnResult } from '../src/server/agent/runTurn';
+import { memoryScenarios } from './memoryScenarios';
+import type { Repo } from '../src/server/db/repo';
+import type { RecallPacket } from '../src/shared/memory';
 import type { ScriptedStep } from '../tests/helpers/fakeLlm';
 export type Scenario = { id: string; priority: 'P0' | 'P1'; text: string; cassette: string; history?: { user: string; assistant: string }[];
+  setup?: (repo: Repo) => string | undefined; assertMemory?: (packet: RecallPacket) => string[];
   script: ScriptedStep[]; assert: (result: TurnResult) => string[] };
 const call = (query: string) => ({ args: JSON.stringify({ query, freshness: 'any' }) });
 const completed = (r: TurnResult) => r.status === 'complete' ? [] : ['turn did not complete'];
@@ -11,6 +15,7 @@ const noSearch = (r: TurnResult) => [...completed(r), ...(r.stats.searches ? ['u
 const unavailable = (r: TurnResult) => [...completed(r), ...(!/could(n't| not)|unable|cannot|can't|unavailable|timed out/i.test(r.text) ? ['failure not disclosed'] : []),
   ...(r.stats.latencyMs >= 30_000 ? ['latency exceeded 30s'] : [])];
 export const scenarios: Scenario[] = [
+  ...memoryScenarios,
   { id: 'D1', priority: 'P0', text: "What's the latest stable Node.js LTS version? For reproducibility use the exact search query: Node.js latest LTS version", cassette: 'D1',
     script: [{ calls: [call('Node.js latest LTS version')] }, { text: ['The evaluation snapshot lists Node.js 24 LTS [1].'] }], assert: grounded },
   { id: 'E1', priority: 'P0', text: 'Thanks! Can you rephrase that more simply?', cassette: 'E1', history: [{ user: 'What is Node.js LTS?', assistant: 'LTS means long-term support: a release maintained for longer.' }],
@@ -29,4 +34,4 @@ export const scenarios: Scenario[] = [
   { id: 'K1', priority: 'P1', text: 'Which Example plan is cheaper per seat per month? Use the exact search query: Example billing plans', cassette: 'K1',
     script: [{ calls: [call('Example billing plans')] }, { text: ['The plans differ in billing: $90 monthly [1] versus $80 billed annually [2].'] }], assert: r => [...grounded(r), ...(!/annual|billing/i.test(r.text) ? ['billing period missing'] : []), ...(r.evidence?.citations.some(c => c.state === 'unverified') ? ['unverified citation'] : [])] },
 ];
-export const deferred = ['A1', 'B1', 'B2', 'C1', 'C2', 'C3', 'F2', 'H1', 'H2', 'J1']; // Require M3 recall/fixtures.
+export const deferred = ['B2', 'C1', 'C2', 'C3', 'H2', 'J1']; // Require M3 recall/fixtures.

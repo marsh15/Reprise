@@ -9,12 +9,12 @@ it('runs the reproducible mock harness while explicitly withholding model scores
   try {
     const report = JSON.parse(await readFile(path + '.json', 'utf8'));
     expect(report.mode).toBe('mock'); expect(report.metrics).toBeNull(); expect(report.blocked).toBeNull();
-    expect(report.rows).toHaveLength(9); expect(report.rows.every((row: { failures: unknown[] }) => row.failures.length === 0)).toBe(true);
-    expect(report.rows[0].result.evidence.sources[0].fixture).toBe(true);
+    expect(report.rows).toHaveLength(13); expect(report.rows.every((row: { failures: unknown[] }) => row.failures.length === 0)).toBe(true);
+    expect(report.rows.find((row: {id:string}) => row.id === 'D1').result.evidence.sources[0].fixture).toBe(true);
     expect(report.rows[0].inputHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(report.deferredToM3).toContain('C1');
+    expect(report.deferredToM4).toContain('C1');
   } finally { await Promise.all([rm(path + '.json'), rm(path + '.md')]); }
-});
+}, 15000);
 it('reports absent credentials as untested with unknown usage and cost, not a zero score', async () => {
   let stdout = '';
   try {
@@ -26,6 +26,6 @@ it('reports absent credentials as untested with unknown usage and cost, not a ze
     const report = JSON.parse(await readFile(path + '.json', 'utf8'));
     expect(report.blocked).toContain('LLM_API_KEY absent');
     expect(report.metrics).toMatchObject({ p0PassRate: null, inputTokens: null, outputTokens: null, medianEstimatedUsdPerTurn: null, toolCallReliability: null });
-    expect(report.untested).toHaveLength(9);
+    expect(report.untested).toHaveLength(13);
   } finally { await Promise.all([rm(path + '.json'), rm(path + '.md')]); }
-});
+}, 15000);
