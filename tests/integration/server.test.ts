@@ -21,10 +21,15 @@ it('runs the real process, aborts on socket loss, persists across restart, and s
     child = spawn(process.execPath, ['--import', 'tsx', 'src/server/main.ts'], { env: { ...process.env,
       LLM_API_KEY: 'fake', TAVILY_API_KEY: 'fake', LLM_BASE_URL: provider.url, PORT: String(port),
       REPRISE_DB_PATH: join(dir, 'reprise.db'), NODE_ENV: process.env.REPRISE_TEST_PRODUCTION ? 'production' : 'test', REPRISE_NOW: '2026-11-11T20:00:00Z' }, stdio: ['ignore', 'pipe', 'pipe'] });
-    let output = ''; child.stdout?.on('data', data => { output += String(data); }); child.stderr?.on('data', data => { output += String(data); });
-    await waitFor(async () => {
-      if (child?.exitCode !== null) throw new Error(output);
-      try { return (await fetch(`${url}/api/health`)).ok; } catch { return false; }
+    await new Promise<void>((resolve, reject) => {
+      let output = '';
+      const timeout = setTimeout(() => reject(new Error(`Server startup timed out: ${output}`)), 8_000);
+      const capture = (data: Buffer) => {
+        output += String(data);
+        if (output.includes('server.listening')) { clearTimeout(timeout); resolve(); }
+      };
+      child!.stdout?.on('data', capture); child!.stderr?.on('data', capture);
+      child!.once('exit', code => { clearTimeout(timeout); reject(new Error(`Server exited ${code}: ${output}`)); });
     });
   }
   async function stop() {

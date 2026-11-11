@@ -106,6 +106,7 @@ it('rejects stale retries and mismatched duplicate ids', async () => {
   const request = input(); await collect(await post(request));
   const conversationId = repo.listConversations()[0].id;
   expect((await post({ ...request, text: 'Different' })).status).toBe(409);
+  expect((await post({ ...request, retryOfUserMessageId: randomUUID() })).status).toBe(409);
   const user = repo.getConversationMessages(conversationId)[0];
   await collect(await post({ ...input(), conversationId }));
   expect((await post({ ...input(), conversationId, retryOfUserMessageId: user.id })).status).toBe(409);

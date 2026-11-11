@@ -16,7 +16,7 @@ export function createRunTurn(llm: Llm, config: Config): RunTurn {
     try {
       signal.throwIfAborted();
       const context: ChatCompletionMessageParam[] = [
-        { role: 'system', content: 'You are Reprise, a helpful conversational assistant. Web search and cross-conversation recall are not available in this milestone. Do not claim to have searched or recalled other conversations.' },
+        { role: 'system', content: 'You are Reprise, a helpful conversational assistant. You have no web search tool or access to other conversations. Do not claim to have searched or recalled other conversations.' },
         ...messages.map(({ role, content }) => ({ role, content })),
       ];
       const stream = await llm.chat.completions.create({

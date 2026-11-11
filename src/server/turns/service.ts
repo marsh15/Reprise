@@ -15,7 +15,7 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
   function prepare(input: TurnRequest) {
     if (closing) throw new TurnError('shutting_down', 'Server is shutting down. Retry shortly.', 409);
     const existing = repo.findClientMessage(input.clientMessageId);
-    if (existing && (input.conversationId && existing.conversationId !== input.conversationId || existing.content !== input.text)) {
+    if (existing && (input.conversationId && existing.conversationId !== input.conversationId || existing.content !== input.text || input.retryOfUserMessageId && input.retryOfUserMessageId !== existing.id)) {
       throw new TurnError('idempotency_conflict', 'This request id belongs to a different message.', 409);
     }
     let user: StoredMessage;

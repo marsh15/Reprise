@@ -17,16 +17,16 @@ async function main() {
   const config = loadConfig();
   const clock = createClock(config.REPRISE_NOW);
   const log = createLogger(clock, config.LOG_LEVEL);
+  const production = process.env.NODE_ENV === 'production';
+  if (production && !existsSync('dist/index.html')) throw new Error('Build the client first: npm run build.');
   const store = openDatabase(config.REPRISE_DB_PATH);
   const repo = createRepo(store);
   const turns = createTurnService(repo, createRunTurn(createLlm(config), config), clock, config.LLM_MODEL);
   const apiListener = getRequestListener(createApp(config, clock, { repo, turns }).fetch);
-  const production = process.env.NODE_ENV === 'production';
   const httpServer = createServer();
   let vite: import('vite').ViteDevServer | undefined;
 
   if (production) {
-    if (!existsSync('dist/index.html')) throw new Error('Build the client first: npm run build.');
     const web = new Hono();
     web.use('*', serveStatic({ root: './dist' }));
     web.use('*', async (c, next) => {
@@ -56,8 +56,7 @@ async function main() {
       code: error.code,
       message: error.code === 'EADDRINUSE' ? `Port ${config.PORT} is in use. Stop the other server or change PORT in .env.` : 'HTTP server failed.',
     });
-    void vite?.close();
-    void turns.shutdown().then(() => store.close());
+    void shutdown();
     process.exitCode = 1;
   });
   httpServer.listen(config.PORT, '127.0.0.1', () => {
@@ -66,14 +65,17 @@ async function main() {
       log('warn', 'clock.overridden', { message: 'Test clock active. Unset REPRISE_NOW for real conversations.', now: clock.now().toISOString() });
     }
   });
+  let shuttingDown = false;
+  async function shutdown() {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    httpServer.close();
+    await turns.shutdown();
+    await vite?.close();
+    store.close();
+  }
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.once(signal, () => {
-      httpServer.close();
-      void turns.shutdown().then(async () => {
-        await vite?.close();
-        store.close();
-      });
-    });
+    process.once(signal, () => { void shutdown(); });
   }
 }
 
