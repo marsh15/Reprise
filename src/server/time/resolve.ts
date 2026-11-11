@@ -30,6 +30,7 @@ export function resolveDates(text: string, now: Date, tz: string): DateResolutio
   const resolutions: DateResolution[] = [];
   for (const match of text.matchAll(pattern)) {
     const phrase = match[0];
+    if (/^\.[a-z0-9]/i.test(text.slice(match.index + phrase.length))) continue;
     let value = phrase.toLowerCase();
     if (/^(last time|since we)/.test(value)) {
       resolutions.push({ phrase, kind: 'last_mention', candidates: [], ambiguous: false });

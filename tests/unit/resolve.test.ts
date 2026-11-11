@@ -82,7 +82,7 @@ describe('resolveDates', () => {
   it.each([
     'may I ask a question?', 'march forward', 'a second opinion',
     '3/11', '11/3/2026', '31 February 2026', 'February 30th 2024',
-    '29 February 2025', '31 April 2026', 'no date here',
+    '29 February 2025', '31 April 2026', 'no date here', 'Monday.com is a CRM', 'today.com has news',
   ])('ignores invalid or unsupported text: %s', (text) => {
     expect(resolveDates(text, new Date(defaultNow), defaultTz)).toEqual([]);
   });

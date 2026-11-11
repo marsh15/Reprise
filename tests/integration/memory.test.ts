@@ -95,3 +95,12 @@ it('survives database restart with source provenance and recall pointers intact'
     disk.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+it('honors cancellation before a bounded-history clarification can emit text', async () => {
+  const current = pastTurn(repo, 'Current');
+  const packet = (await import('../../src/server/memory/recall')).recall(repo, { text: 'Current', conversationId: current.user.conversationId, now: clock.now(), tz: 'UTC' });
+  packet.clarification = 'Please narrow the request.';
+  const controller = new AbortController(); controller.abort();
+  const fake = scriptedLlm([]); const events: TurnEvent[] = [];
+  const result = await createRunTurn(fake.llm, config)({ packet, userText: 'Current', signal: controller.signal, emit: async e => { events.push(e); } });
+  expect(result.status).toBe('interrupted'); expect(result.text).toBe(''); expect(events).toEqual([]); expect(fake.requests).toEqual([]);
+});

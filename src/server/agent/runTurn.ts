@@ -39,6 +39,7 @@ export function createRunTurn(llm: Llm, config: Config, options: {
     const context: ChatCompletionMessageParam[] = assembleMessages(recent, userText, buildContextBlock(memory, registry.sources, userText));
     let text = ''; let errorCode: string | undefined; let status: MessageDTO['status'] = 'complete';
     try {
+      signal.throwIfAborted();
       if (memory.clarification) { text = memory.clarification; await emit({ type: 'answer.delta', text }); }
       for (let round = 1; !memory.clarification && round <= budget.maxRounds + 1; round++) {
         signal.throwIfAborted();
