@@ -72,8 +72,12 @@ export function createRepo(store: Store) {
       VALUES(?,?,?,?,?,?,?,?,?)`).run(search.id, id, search.round, search.query, search.freshness, search.startedAt, search.durationMs, search.status, search.error ?? null);
     for (const source of evidence.sources) if (ownSearches.has(source.searchId)) sql(`INSERT INTO sources(id,search_id,rank,url,title,excerpt,published_at,retrieved_at,fixture)
       VALUES(?,?,?,?,?,?,?,?,?)`).run(source.sourceId, source.searchId, source.rank, source.url, source.title, source.excerpt, source.publishedAt, source.retrievedAt, Number(source.fixture));
-    for (const citation of evidence.citations) sql('INSERT INTO citations(message_id,marker,source_id,state,detail) VALUES(?,?,?,?,?)')
-      .run(id, citation.marker, citation.sourceId, citation.state, citation.detail);
+    for (const citation of evidence.citations) {
+      // A recalled source may have been deleted while this answer was streaming. Do not resurrect it or lose the answer.
+      const missing = citation.sourceId !== null && !sql('SELECT id FROM sources WHERE id=?').get(citation.sourceId);
+      sql('INSERT INTO citations(message_id,marker,source_id,state,detail) VALUES(?,?,?,?,?)')
+        .run(id, citation.marker, missing ? null : citation.sourceId, missing ? 'unverified' : citation.state, missing ? 'Source deleted or unavailable.' : citation.detail);
+    }
   }
   function carriedSources(messages: MessageDTO[]): SourceRecord[] {
     const assistants = messages.filter(message => message.role === 'assistant').slice(-2);
@@ -152,9 +156,9 @@ export function createRepo(store: Store) {
     ftsTurnsOnDates: (query: string, ranges: { from: string; to: string }[], excludeIds: string[] = []) => ftsTurns(query, { ranges, excludeIds, limit: -1 }),
     historyStart: () => (sql("SELECT MIN(local_date) AS date FROM messages").get() as {date: string | null}).date,
     insertUserMessage: (input: UserInput) => store.transaction(() => findClientMessage(input.clientMessageId) ?? insertMessage({ ...input, id: randomUUID(), role: 'user', status: 'complete' })),
-    insertAssistantTurn: (input: { id: string; user: StoredMessage; text: string; status: MessageDTO['status']; now: Date; model: string; stats: TurnStats; evidence?: Evidence; recall?: RecallItem[]; assumptions?: unknown }) => store.transaction(() => {
+    insertAssistantTurn: (input: { id: string; user: StoredMessage; text: string; status: MessageDTO['status']; now: Date; model: string; stats: TurnStats; evidence?: Evidence; recall?: RecallItem[]; assumptions?: unknown; clientMessageId?: string }) => store.transaction(() => {
       insertMessage({ id: input.id, conversationId: input.user.conversationId, role: 'assistant', text: input.text,
-        status: input.status, timezone: input.user.timezone, now: input.now, replyTo: input.user.id,
+        status: input.status, timezone: input.user.timezone, now: input.now, replyTo: input.user.id, clientMessageId: input.clientMessageId,
         meta: JSON.stringify({ model: input.model, ...input.stats, recall: input.recall, assumptions: input.assumptions,
           sourceRefs: input.evidence?.sources.map(({ sourceId, n }) => ({ sourceId, n })) ?? [] }),
       });

@@ -64,3 +64,22 @@ it('carries every cited observation for a reused URL, including a newer excerpt 
   expect(messages.at(-1)?.evidence?.citations[0].state).toBe('verified');
   expect(repo.carriedSources(messages).map(s => s.excerpt)).toEqual(['$90', '$95']);
 });
+it('saves a new answer when its recalled source conversation is deleted during generation', async () => {
+  const historical = await research();
+  const source = historical.at(-1)!.evidence!.sources[0];
+  const fake = scriptedLlm([{ text: ['The earlier observation was $90 [1].'] }]);
+  const service = createTurnService(repo, createRunTurn(fake.llm, config, { now: clock.now }), clock, 'fake');
+  const turn = service.prepare({ clientMessageId: randomUUID(), text: 'Recall the earlier price', timezone: 'UTC' });
+  const events: import('../../src/shared/types').TurnEvent[] = [];
+  await turn.run(async event => {
+    events.push(event);
+    if (event.type === 'answer.delta') await service.deleteConversation(historical[0].conversationId);
+  });
+  const answer = repo.getConversationMessages(turn.conversationId).at(-1)!;
+  expect(answer).toMatchObject({ role: 'assistant', status: 'complete', content: 'The earlier observation was $90 [1].' });
+  expect(answer.evidence?.sources).toEqual([]);
+  expect(answer.evidence?.citations).toMatchObject([{ marker: 1, sourceId: null, state: 'unverified', detail: 'Source deleted or unavailable.' }]);
+  expect(store.db.prepare('SELECT id FROM sources WHERE id=?').get(source.sourceId)).toBeUndefined();
+  expect(events.find(event => event.type === 'citations')).toMatchObject({ sources: [], citations: answer.evidence?.citations });
+  expect(events.at(-1)?.type).toBe('turn.completed');
+});

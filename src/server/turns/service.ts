@@ -11,12 +11,17 @@ export class TurnError extends Error {
 }
 
 export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, model: string) {
-  const active = new Map<string, { controller: AbortController; done: Promise<void> }>();
+  const active = new Map<string, { controller: AbortController; done: Promise<void>; clientMessageId: string }>();
   const deleting = new Set<string>();
   let closing = false;
   function prepare(input: TurnRequest) {
     if (closing) throw new TurnError('shutting_down', 'Server is shutting down. Retry shortly.', 409);
-    const existing = repo.findClientMessage(input.clientMessageId);
+    if ([...active.values()].some(turn => turn.clientMessageId === input.clientMessageId)) {
+      throw new TurnError('turn_in_progress', 'An answer for this request is already running.', 409);
+    }
+    const requestMessage = repo.findClientMessage(input.clientMessageId);
+    const attempt = requestMessage?.role === 'assistant' ? requestMessage : undefined;
+    const existing = attempt ? repo.getMessage(attempt.replyTo!) : requestMessage;
     if (existing && (input.conversationId && existing.conversationId !== input.conversationId || existing.content !== input.text || input.retryOfUserMessageId && input.retryOfUserMessageId !== existing.id)) {
       throw new TurnError('idempotency_conflict', 'This request id belongs to a different message.', 409);
     }
@@ -25,6 +30,7 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
     if (existing) {
       const reply = repo.getReply(existing.id);
       if (active.has(existing.conversationId)) throw new TurnError('turn_in_progress', 'An answer is already running.', 409);
+      if (attempt) return replay(existing, attempt);
       if (reply?.status === 'complete') return replay(existing, reply);
       if (!input.retryOfUserMessageId) return replay(existing, reply);
     }
@@ -51,7 +57,7 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
     const traceId = randomUUID();
     let finish!: () => void;
     const done = new Promise<void>(resolve => { finish = resolve; });
-    active.set(user.conversationId, { controller, done });
+    active.set(user.conversationId, { controller, done, clientMessageId: input.clientMessageId });
     return {
       conversationId: user.conversationId,
       abort: () => controller.abort(),
@@ -68,8 +74,10 @@ export function createTurnService(repo: Repo, runTurn: RunTurn, clock: Clock, mo
           await send({ type: 'recall', items, resolutions: packet.resolutions });
           const result = await runTurn({ packet, userText: user.content, signal: controller.signal, emit: send });
           if (controller.signal.aborted) result.status = 'interrupted';
-          repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, recall: items, assumptions: packet.resolutions, now: clock.now(), model });
-          if (result.evidence) await send({ type: 'citations', citations: result.evidence.citations, sources: result.evidence.sources });
+          // A retry has its own identity, stored on its attempt using the existing unique request-id column.
+          const saved = repo.insertAssistantTurn({ id: assistantMessageId, user, ...result, recall: items, assumptions: packet.resolutions,
+            clientMessageId: input.retryOfUserMessageId && !requestMessage ? input.clientMessageId : undefined, now: clock.now(), model });
+          if (result.evidence && saved.evidence) await send({ type: 'citations', citations: saved.evidence.citations, sources: saved.evidence.sources });
           // Cancellation via endpoint keeps SSE connected, so its terminal event still reaches the client.
           const terminal = result.status === 'complete'
             ? { type: 'turn.completed' as const, assistantMessageId, stats: result.stats }

@@ -21,7 +21,7 @@ CREATE TABLE messages (
   local_date  TEXT NOT NULL,                   -- 'YYYY-MM-DD' in tz at write time
   tz          TEXT NOT NULL,                   -- IANA, e.g. 'Asia/Kolkata'
   reply_to    TEXT REFERENCES messages(id) ON DELETE CASCADE,  -- assistant -> user message
-  client_message_id TEXT UNIQUE,               -- user messages only (idempotency)
+  client_message_id TEXT UNIQUE,               -- user submission or retry-attempt identity
   meta        TEXT,                            -- JSON: model, usage, timings, assumptions
   UNIQUE (conversation_id, seq)
 );

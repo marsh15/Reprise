@@ -163,3 +163,29 @@ it('cancels through the HTTP endpoint and rejects new work during deletion', asy
   expect(repo.getConversation(prepared.conversationId)).toBeUndefined();
   expect(repo.getConversationMessages(prepared.conversationId)).toEqual([]);
 });
+it.each(['complete', 'interrupted'] as const)('replays a lost retry acknowledgement with its saved %s attempt', async status => {
+  const first = turns.prepare(input());
+  first.abort(); await first.run(async () => {});
+  const user = repo.getConversationMessages(first.conversationId)[0];
+  const retry = { ...input(), conversationId: first.conversationId, retryOfUserMessageId: user.id };
+  const attempt = turns.prepare(retry);
+  expect((await post(retry)).status).toBe(409);
+  // The retry id cannot be claimed by a concurrent new conversation before its attempt is saved.
+  expect((await post({ ...input(), clientMessageId: retry.clientMessageId })).status).toBe(409);
+  if (status === 'interrupted') attempt.abort();
+  await attempt.run(async () => {}); // The client never received this attempt's acknowledgement.
+  const saved = repo.getReply(user.id)!;
+  const requests = fake.requests.length;
+  const events = await collect(await post(retry));
+  expect(events[0]).toMatchObject({ assistantMessageId: saved.id, userMessageId: user.id });
+  expect(events.at(-1)?.type).toBe(status === 'complete' ? 'turn.completed' : 'turn.error');
+  expect(fake.requests).toHaveLength(requests);
+  expect(repo.getConversationMessages(first.conversationId)).toHaveLength(3);
+  expect((await post({ ...retry, text: 'Different' })).status).toBe(409);
+  expect((await post({ ...retry, retryOfUserMessageId: randomUUID() })).status).toBe(409);
+  if (status === 'interrupted') {
+    await collect(await post({ ...retry, clientMessageId: randomUUID() }));
+    expect(repo.getReply(user.id)?.status).toBe('complete');
+    expect((await collect(await post(retry))).at(-1)?.type).toBe('turn.error');
+  }
+});
