@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored fixture for testing only. No live source observation is claimed.",
+  "entries": {
+    "example pricing comparison|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://example.com/pricing",
+          "title": "Official fixture",
+          "content": "[Synthetic evaluation fixture — not a live observation] Official price $90.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://other.example/pricing",
+          "title": "Third-party fixture",
+          "content": "[Synthetic evaluation fixture — not a live observation] Third-party price $80.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

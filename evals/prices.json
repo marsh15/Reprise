@@ -1,0 +1,29 @@
+{
+  "note": "USD per million tokens. Unconfirmed prices stay null. Estimates ignore caching discounts and search credits; never used when usage is incomplete.",
+  "models": [
+    {
+      "model": "gpt-6-luna",
+      "provider": "configured endpoint",
+      "input": 0.1,
+      "output": 0.5,
+      "source": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+      "checkedOn": "2026-11-11"
+    },
+    {
+      "model": "gpt-6.1-terra",
+      "provider": "configured endpoint",
+      "input": 1,
+      "output": 5,
+      "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+      "checkedOn": "2026-11-11"
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "fireworks/us",
+      "input": 0.45,
+      "output": 1.8,
+      "checkedOn": "2026-11-11",
+      "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints"
+    }
+  ]
+}

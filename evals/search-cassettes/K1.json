@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored fixture for testing only. No live source observation is claimed.",
+  "entries": {
+    "example billing plans|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://example.com/monthly",
+          "title": "Monthly fixture",
+          "content": "[Synthetic evaluation fixture — not a live observation] Price $90 per seat per month, monthly billing.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        },
+        {
+          "url": "https://example.com/annual",
+          "title": "Annual fixture",
+          "content": "[Synthetic evaluation fixture — not a live observation] Price $80 per seat per month, billed annually.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

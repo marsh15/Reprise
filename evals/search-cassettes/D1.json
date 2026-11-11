@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored fixture for testing only. No live source observation is claimed.",
+  "entries": {
+    "node.js latest lts version|any": {
+      "status": "ok",
+      "results": [
+        {
+          "url": "https://nodejs.org/en/about/previous-releases",
+          "title": "Node.js releases",
+          "content": "[Synthetic evaluation fixture — not a live observation] Node.js 24 is the LTS release in this frozen fixture.",
+          "publishedAt": null,
+          "retrievedAt": "2026-11-11T08:30:00Z",
+          "fixture": true
+        }
+      ],
+      "durationMs": 12
+    }
+  }
+}

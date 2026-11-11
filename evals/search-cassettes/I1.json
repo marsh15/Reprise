@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "provenance": "synthetic",
+  "note": "Hand-authored fixture for testing only. No live source observation is claimed.",
+  "entries": {
+    "service current pricing|any": {
+      "status": "timeout",
+      "results": [],
+      "durationMs": 12,
+      "error": "timeout"
+    }
+  }
+}
