@@ -1,3 +1,4 @@
+import { affirmativeShipment } from './assertions';
 import type { Scenario } from './scenarios';
 
 const queries = {
@@ -52,7 +53,7 @@ export const pricingScenarios: Scenario[] = [
         !date(r.text, '2026-11-11', 'Nov(?:ember)?', '11') || !date(r.text, '2026-12-01', 'Dec(?:ember)?', '1') ? ['discussion, publication, retrieval and rollout dates required'] : []),
       ...(!/announc/i.test(r.text) || !/publish/i.test(r.text) || !/retriev/i.test(r.text) || !/rollout|roll.out/i.test(r.text) ? ['temporal roles missing'] : []),
       ...(!/(?:not|rather than|does not|doesn.t|cannot|can.t|future)[^.\n]{0,100}(?:available|availability|shipped|rollout)/i.test(r.text) ? ['announcement versus availability distinction missing'] : []),
-      ...(/\b(?:atlas|it|feature)\s+(?:has\s+)?(?:shipped|launched|is available)\b/i.test(r.text) ? ['unsupported shipped claim'] : []),
+      ...(affirmativeShipment(r.text) ? ['unsupported shipped claim'] : []),
       ...(r.evidence?.sources[0]?.fixture && /discussion/i.test(r.evidence.sources[0].title ?? '') && /announcement/i.test(r.evidence.sources[1]?.title ?? '') ? [] : ['historical source must precede announcement'])],
     assertMemory: p => p.recalledTurns.some(t => t.origin === 'fixture' && t.userMessage.localDate === '2026-11-09' && /atlas/i.test(t.userMessage.content)) &&
       p.carriedSources.some(s => s.fixture && /discussion/i.test(s.title ?? '')) ? [] : ['dated fixture discussion or source missing'] },

@@ -54,7 +54,7 @@ it('carries cited evidence to the next turn without inventing a new retrieval', 
   expect(store.db.prepare('SELECT COUNT(*) AS n FROM sources').get()!.n).toBe(1);
 });
 it('carries every cited observation for a reused URL, including a newer excerpt supporting the answer', async () => {
-  const fake = scriptedLlm([{ calls: ['old', 'new'].map(query => ({ args: JSON.stringify({ query, freshness: 'any' }) })) }, { text: ['The new snapshot shows $95 [1].'] }]);
+  const fake = scriptedLlm([{ calls: ['old', 'new'].map(query => ({ args: JSON.stringify({ query, freshness: 'any' }) })) }, { text: ['The old snapshot shows $90 [1]; the new snapshot shows $95 [2].'] }]);
   const run = createRunTurn(fake.llm, config, { now: clock.now, search: async request => ({ status: 'ok', durationMs: 1,
     results: [{ url: 'https://example.com/pricing', title: null, content: request.query === 'old' ? '$90' : '$95', publishedAt: null }] }) });
   const service = createTurnService(repo, run, clock, 'fake');

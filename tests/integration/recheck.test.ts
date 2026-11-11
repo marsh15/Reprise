@@ -23,7 +23,7 @@ it('keeps old and new observations of the same pricing URL with distinct times/I
   expect(row.result.stats.searches).toBe(5); expect(sources).toHaveLength(10);
   expect(new Set(sources.map(s => s.sourceId)).size).toBe(10);
   const hubspot = sources.filter(s => s.url.includes('hubspot'));
-  expect(hubspot.map(s => s.n)).toEqual([1, 1]);
+  expect(hubspot.map(s => s.n)).toEqual([1, 6]);
   expect(hubspot[0].retrievedAt).toContain('2026-11-09'); expect(hubspot[1].retrievedAt).toContain('2026-11-11');
   expect(hubspot[0].excerpt).toContain('$20'); expect(hubspot[1].excerpt).toContain('$24');
   expect(row.memory.recalledTurns[0].sources[0].excerpt).toContain('$20');
@@ -52,6 +52,6 @@ it.each([
 it('rejects a dated change attributed only to a current pricing page', async () => {
   const row = await execute('C1');
   expect(undatedChangeClaims({ ...row.result, text: 'HubSpot changed pricing on 2026-11-10 [1].' })).toHaveLength(1);
-  expect(undatedChangeClaims({ ...row.result, text: 'Pipedrive increased pricing on 2026-11-10 [2].' })).toEqual([]);
-  expect(undatedChangeClaims({ ...row.result, text: 'Pipedrive increased pricing on 2026-11-11 [2].' })).toHaveLength(1);
+  expect(undatedChangeClaims({ ...row.result, text: 'Pipedrive increased pricing on 2026-11-10 [7].' })).toEqual([]);
+  expect(undatedChangeClaims({ ...row.result, text: 'Pipedrive increased pricing on 2026-11-11 [7].' })).toHaveLength(1);
 });

@@ -10,7 +10,7 @@ import { createSearchWeb } from '../search/tavily';
 import { createClock } from '../clock';
 import { BUDGET } from './budget';
 import { assembleMessages, buildContextBlock } from './prompt';
-import { createSourceRegistry } from './sourceRegistry';
+import { createSourceRegistry, sourceIndex } from './sourceRegistry';
 import { checkCitations } from './citations';
 import { modelStep } from './modelStep';
 import { researchRound, type ResearchBudget } from './researchRound';
@@ -31,6 +31,7 @@ export function createRunTurn(llm: Llm, config: Config, options: {
     const stats: TurnStats = { searches: 0, sources: 0, latencyMs: 0, ttftMs: null, inputTokens: 0, outputTokens: 0, usageComplete: true, modelCalls: 0, toolCalls: 0, invalidToolCalls: 0 };
     const initialSources = [...memory.recalledTurns.flatMap(t => t.sources), ...memory.carriedSources];
     const registry = createSourceRegistry(initialSources.map(source => ({ ...source, excerpt: clipHistoricalText(source.excerpt, 600) })));
+    const historicalIds = new Set(initialSources.map(source => source.sourceId));
     const evidence: Evidence = { searches: [], sources: registry.sources, citations: [] };
     const seen = new Set<string>();
     const researchSignal = AbortSignal.any([signal, AbortSignal.timeout(budget.researchDeadlineMs)]);
@@ -47,7 +48,7 @@ export function createRunTurn(llm: Llm, config: Config, options: {
         if (!toolsAllowed) context.push({ role: 'system', content: FINAL_NOTE });
         let calls;
         try {
-          calls = await modelStep({ llm, config, messages: context, signal: toolsAllowed ? researchSignal : signal,
+          calls = await modelStep({ llm, config, messages: [...context, ...(registry.sources.length ? [{ role: 'system' as const, content: sourceIndex(registry.sources, historicalIds) }] : [])], signal: toolsAllowed ? researchSignal : signal,
             toolsAllowed, emit, stats, started, onText: draft => { text = draft; }, onReset: () => { text = ''; } });
         } catch (error) {
           if (toolsAllowed && researchSignal.aborted && !signal.aborted) {
@@ -55,7 +56,7 @@ export function createRunTurn(llm: Llm, config: Config, options: {
             await emit({ type: 'answer.reset' });
             // A truncated model step has no complete tool-call message to replay.
             context.push({ role: 'system', content: FINAL_NOTE });
-            await modelStep({ llm, config, messages: context, signal, toolsAllowed: false, emit, stats, started,
+            await modelStep({ llm, config, messages: [...context, ...(registry.sources.length ? [{ role: 'system' as const, content: sourceIndex(registry.sources, historicalIds) }] : [])], signal, toolsAllowed: false, emit, stats, started,
               onText: draft => { text = draft; }, onReset: () => { text = ''; } });
             break;
           }

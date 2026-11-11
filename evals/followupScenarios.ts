@@ -36,7 +36,7 @@ export const followupScenarios: Scenario[] = [
       ...(!/supabase/i.test(r.text) ? ['missing newer answer'] : [])],
     assertMemory: p => p.resolutions[0]?.chosen === '2026-11-10' && p.recalledTurns.some(t => t.userMessage.localDate === '2026-11-10' && /supabase/i.test(t.assistantMessage?.content ?? '')) &&
       /2026-11-03|3 Nov/i.test(JSON.stringify(p.resolutions[0])) ? [] : ['wrong Tuesday selection or missing alternative'] },
-  { id: 'J1', priority: 'P1', text: `Which of those is cheaper for 20 seats? Use the exact search query: ${query}`, cassette: 'J1',
+  { id: 'J1', priority: 'P1', text: `Which of those is cheaper for 20 seats? Use freshness any and the exact search query: ${query}`, cassette: 'J1',
     setup: repo => repo.seedFixtures([{ ...fixture('CRM shortlist', 'Compare HubSpot Sales Hub and Pipedrive CRM.', 'The demo shortlist is HubSpot and Pipedrive [1].', '2026-11-09'),
       sources: [{ url: 'https://www.hubspot.com/products/sales', title: '[Demo] CRM shortlist', excerpt: '[Synthetic fixture, no real observation] HubSpot and Pipedrive were shortlisted.' }] }])[0].id,
     history: [{ user: 'Keep those two CRMs on the shortlist.', assistant: 'The demo shortlist contains HubSpot and Pipedrive.' }],

@@ -58,7 +58,7 @@ export async function researchRound(input: {
     await emit({ type: 'search.finished', search: record, sources });
     return { role: 'tool' as const, tool_call_id: call.id, content: JSON.stringify({ query: request.query,
       status: item.error ? 'error' : record.status, ...(record.error ? { error: record.error } : {}),
-      results: sources.map(s => ({ n: s.n, url: s.url, title: s.title, published: s.publishedAt, retrieved: s.retrievedAt, excerpt: s.excerpt, fixture: s.fixture })) }) };
+      results: sources.map(s => ({ cite: `[${s.n}]`, n: s.n, kind: 'new search observation', url: s.url, title: s.title, published: s.publishedAt, retrieved: s.retrievedAt, excerpt: s.excerpt, fixture: s.fixture })) }) };
   }));
 }
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {

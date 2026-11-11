@@ -21,7 +21,7 @@ it('runs parallel fragmented calls, resets preamble, sees results, checks citati
   const { result, events, requests } = await run([{ text: ['Draft'], calls: [call('A'), call('B')] }, { text: ['Costs $90 [1].'] }], search);
   expect(result.status).toBe('complete'); expect(result.text).toBe('Costs $90 [1].'); expect(peak).toBe(2);
   expect(result.evidence?.citations).toMatchObject([{ marker: 1, state: 'verified' }]);
-  expect(result.evidence?.sources).toHaveLength(2); expect(result.stats.sources).toBe(1);
+  expect(result.evidence?.sources).toHaveLength(2); expect(result.stats.sources).toBe(2);
   expect(result.stats).toMatchObject({ inputTokens: 20, outputTokens: 4, modelCalls: 2, usageComplete: true });
   expect(events.findIndex(e => e.type === 'answer.reset')).toBeLessThan(events.findIndex(e => e.type === 'search.started'));
   expect(JSON.stringify(requests[1].messages)).toContain('Costs $90 for 20 seats.');

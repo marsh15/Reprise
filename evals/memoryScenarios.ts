@@ -1,4 +1,5 @@
 import type { Scenario } from './scenarios';
+import { noRecord, historyStart, limitation, inventedPast, citationIntegrity } from './assertions';
 import { seedDemo } from '../scripts/seed-demo';
 const noSearch = (r: Parameters<Scenario['assert']>[0]) => [
   ...(r.status !== 'complete' ? ['turn incomplete'] : []), ...(r.stats.searches ? ['unexpected memory search'] : []),
@@ -21,13 +22,14 @@ export const memoryScenarios: Scenario[] = [
     }, script: [{ text: ['On 3 November the demo conversations covered Postgres hosting and Node versus Bun.'] }],
     assert: r => [...noSearch(r), ...(!/Postgres/i.test(r.text) || !/Node.*Bun/is.test(r.text) ? ['missing one of the recorded topics'] : [])],
     assertMemory: p => p.recalledTurns.length === 2 && p.recalledTurns.every(t => t.userMessage.localDate === '2026-11-03') ? [] : ['wrong date turns'] },
-  { id: 'F2', priority: 'P0', text: 'Last Tuesday I asked you about Postgres hosting. Has any pricing changed since then? If researching current prices, use the exact query: Postgres hosting current pricing', cassette: 'F2',
+  { id: 'F2', priority: 'P0', text: 'Last Tuesday I asked you about Postgres hosting. Has any pricing changed since then? Also research current Postgres hosting prices; use freshness any and the exact query: Postgres hosting current pricing', cassette: 'F2',
     script: [{ calls: [{ args: '{"query":"Postgres hosting current pricing","freshness":"any"}' }] },
       { text: ["I have no record of that past conversation; history starts on 2026-11-11. Current demo pricing shows Supabase Pro at $25 per project per month [1]. I cannot establish a change without historical evidence."] }],
-    assert: r => [...(r.status !== 'complete' ? ['turn incomplete'] : []), ...(!/no record|don't have|no (earlier|previous) conversation/i.test(r.text) ? ['missing no-record disclosure'] : []),
-      ...(!/cannot establish|can't establish|no historical|without historical/i.test(r.text) ? ['historical baseline limitation missing'] : []),
+    assert: r => [...(r.status !== 'complete' ? ['turn incomplete'] : []), ...(!noRecord(r.text) ? ['missing no-record disclosure'] : []),
+      ...limitation(r.text), ...citationIntegrity(r), ...(!historyStart(r.text) ? ['missing history start'] : []),
+      ...(!r.stats.searches ? ['no current research'] : []),
       ...(!r.evidence?.citations.length || r.evidence.citations.some(c => c.state === 'invalid') ? ['current pricing needs valid citations'] : []),
-      ...(/(?:I|we) (?:previously )?(?:recommended|told you|discussed)|you (?:asked|said).*\$\d/i.test(r.text) ? ['possible invented past answer'] : [])],
+      ...(inventedPast(r.text) ? ['possible invented past answer'] : [])],
     assertMemory: p => p.recalledTurns.length === 0 && p.resolutions[0].chosen === null ? [] : ['invented historical recall'] },
   { id: 'H1', priority: 'P0', text: 'Last Tuesday I asked about Postgres hosting — what did you say?', cassette: 'E1',
     setup: repo => { seedDemo(repo, new Date('2026-11-11T08:30Z'), 'Asia/Kolkata'); return undefined; },

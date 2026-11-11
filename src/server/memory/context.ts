@@ -9,7 +9,7 @@ export function isHistoricalRecheck(packet: RecallPacket, text: string): boolean
 }
 export function renderRecallContext(packet: RecallPacket, sources: SourceRecord[], userText: string): string {
   const observation = (source: SourceRecord) => ({ n: sources.find(s => s.sourceId === source.sourceId)?.n ?? 999999,
-    sourceId: source.sourceId, historicalMarker: source.n, title: source.title, url: source.url, published: source.publishedAt,
+    cite: `[${sources.find(s => s.sourceId === source.sourceId)?.n ?? 999999}]`, sourceId: source.sourceId, historicalMarker: source.n, title: source.title, url: source.url, published: source.publishedAt,
     retrieved: source.retrievedAt, excerpt: clipHistoricalText(source.excerpt, 600), fixture: source.fixture, kind: 'historical observation' });
   const suppliedIds = new Set([...packet.recalledTurns.flatMap(t => t.sources), ...packet.carriedSources].map(s => s.sourceId));
   const context = {
