@@ -169,11 +169,13 @@ it.each(['complete', 'interrupted'] as const)('replays a lost retry acknowledgem
   const user = repo.getConversationMessages(first.conversationId)[0];
   const retry = { ...input(), conversationId: first.conversationId, retryOfUserMessageId: user.id };
   const attempt = turns.prepare(retry);
-  expect((await post(retry)).status).toBe(409);
+  const duplicate = await post(retry);
   // The retry id cannot be claimed by a concurrent new conversation before its attempt is saved.
-  expect((await post({ ...input(), clientMessageId: retry.clientMessageId })).status).toBe(409);
+  const collision = await post({ ...input(), clientMessageId: retry.clientMessageId });
   if (status === 'interrupted') attempt.abort();
   await attempt.run(async () => {}); // The client never received this attempt's acknowledgement.
+  expect(duplicate.status).toBe(409);
+  expect(collision.status).toBe(409);
   const saved = repo.getReply(user.id)!;
   const requests = fake.requests.length;
   const events = await collect(await post(retry));
