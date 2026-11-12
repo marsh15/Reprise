@@ -91,14 +91,20 @@ export function createRepo(store: Store) {
     const user = getMessage(id)!;
     return { user, assistant: getReply(id) ?? null, conversation: getConversation(user.conversationId)! };
   }
-  function findTurnsByLocalDates(ranges: { from: string; to: string }[], excludeUserId = '') {
+  /** Chronological user-turn keys only; callers hydrate the few turns they keep. */
+  function turnKeysByLocalDates(ranges: { from: string; to: string }[], excludeUserId = '') {
     if (!ranges.length) return [];
     const where = ranges.map(() => '(local_date BETWEEN ? AND ?)').join(' OR ');
-    const rows = sql(`SELECT id FROM messages WHERE role='user' AND id<>? AND (${where}) ORDER BY created_at,conversation_id,seq,id`)
-      .all(excludeUserId, ...ranges.flatMap(r => [r.from, r.to])) as { id: string }[];
-    return rows.map(row => turn(row.id));
+    return sql(`SELECT id, created_at AS createdAt, conversation_id AS conversationId, seq FROM messages WHERE role='user' AND id<>? AND (${where}) ORDER BY created_at,conversation_id,seq,id`)
+      .all(excludeUserId, ...ranges.flatMap(r => [r.from, r.to])) as { id: string; createdAt: string; conversationId: string; seq: number }[];
+  }
+  function findTurnsByLocalDates(ranges: { from: string; to: string }[], excludeUserId = '') {
+    return turnKeysByLocalDates(ranges, excludeUserId).map(row => turn(row.id));
   }
   function ftsTurns(query: string, options: { ranges?: { from: string; to: string }[]; excludeIds?: string[]; limit?: number; recent?: boolean } = {}) {
+    return ftsTurnIds(query, options).map(id => turn(id));
+  }
+  function ftsTurnIds(query: string, options: { ranges?: { from: string; to: string }[]; excludeIds?: string[]; limit?: number; recent?: boolean } = {}) {
     const ranges = options.ranges ?? [];
     const exclude = options.excludeIds ?? [];
     const dateFilter = ranges.length ? `AND (${ranges.map(() => '(u.local_date BETWEEN ? AND ?)').join(' OR ')})` : '';
@@ -111,7 +117,7 @@ export function createRepo(store: Store) {
       WHERE 1=1 ${dateFilter} ${excluded} GROUP BY u.id
       ORDER BY ${options.recent ? '' : 'score,'} u.created_at DESC,u.conversation_id,u.seq DESC,u.id LIMIT ?`)
       .all(query, ...ranges.flatMap(r => [r.from, r.to]), ...exclude, options.limit ?? 4) as { id: string }[];
-    return rows.map(row => turn(row.id));
+    return rows.map(row => row.id);
   }
   function getSourcesForMessages(ids: string[], perMessage: number) {
     return ids.map(id => {
@@ -152,8 +158,8 @@ export function createRepo(store: Store) {
     listConversations: () => sql(`${conversationSelect} ORDER BY updated_at DESC, id`).all() as Conversation[],
     deleteConversation: (id: string) => store.transaction(() => sql('DELETE FROM conversations WHERE id=?').run(id).changes > 0),
     getMessage, findClientMessage, getReply, getConversationMessages, carriedSources,
-    findTurnsByLocalDates, ftsTurns, getSourcesForMessages, conversationIndex, seedFixtures,
-    ftsTurnsOnDates: (query: string, ranges: { from: string; to: string }[], excludeIds: string[] = []) => ftsTurns(query, { ranges, excludeIds, limit: -1 }),
+    turn, findTurnsByLocalDates, turnKeysByLocalDates, ftsTurns, getSourcesForMessages, conversationIndex, seedFixtures,
+    ftsTurnIdsOnDates: (query: string, ranges: { from: string; to: string }[], excludeIds: string[] = []) => ftsTurnIds(query, { ranges, excludeIds, limit: -1 }),
     historyStart: () => (sql("SELECT MIN(local_date) AS date FROM messages").get() as {date: string | null}).date,
     insertUserMessage: (input: UserInput) => store.transaction(() => findClientMessage(input.clientMessageId) ?? insertMessage({ ...input, id: randomUUID(), role: 'user', status: 'complete' })),
     insertAssistantTurn: (input: { id: string; user: StoredMessage; text: string; status: MessageDTO['status']; now: Date; model: string; stats: TurnStats; evidence?: Evidence; recall?: RecallItem[]; assumptions?: unknown; clientMessageId?: string }) => store.transaction(() => {

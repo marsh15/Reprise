@@ -6,10 +6,14 @@ import { boundRecallPacket, clipHistoricalText } from './context';
 import { createLogger } from '../log';
 
 type Input = { text: string; conversationId: string; now: Date; tz: string; userMessageId?: string };
-type StoredTurn = ReturnType<Repo['findTurnsByLocalDates']>[number];
-function chronological(a: StoredTurn, b: StoredTurn) {
-  return a.user.createdAt.localeCompare(b.user.createdAt) || a.user.conversationId.localeCompare(b.user.conversationId) || a.user.seq - b.user.seq;
+type StoredTurn = ReturnType<Repo['turn']>;
+type TurnKey = { createdAt: string; conversationId: string; seq: number };
+/** Distinct date references resolved per message. Repeats are free; this bounds distinct ones. */
+export const MAX_DATE_RESOLUTIONS = 8;
+function chronologicalKey(a: TurnKey, b: TurnKey) {
+  return a.createdAt.localeCompare(b.createdAt) || a.conversationId.localeCompare(b.conversationId) || a.seq - b.seq;
 }
+const chronological = (a: StoredTurn, b: StoredTurn) => chronologicalKey(a.user, b.user);
 function recalled(turn: StoredTurn, sources: RecalledTurn['sources'], reason: RecalledTurn['reason']): RecalledTurn {
   return { conversationId: turn.conversation.id, conversationTitle: turn.conversation.title, origin: turn.conversation.origin,
     userMessage: { id: turn.user.id, content: turn.user.content, localDate: turn.user.localDate, createdAt: turn.user.createdAt },
@@ -37,7 +41,17 @@ export function recall(repo: Repo, input: Input): RecallPacket {
       const sources = turn.assistant ? repo.getSourcesForMessages([turn.assistant.id], 6)[0] : [];
       packet.recalledTurns.push(recalled(turn, sources, reason));
     };
-    for (const resolution of resolutions) {
+    // Identical phrases resolve identically, so keep the first of each. Only dated lookups are capped;
+    // a "last time we discussed" reference is one bounded query and is never dropped.
+    const seen = new Set<string>(); let dated = 0;
+    const distinct = resolutions.filter(r => {
+      const key = JSON.stringify([r.kind, r.candidates]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return r.kind === 'last_mention' || ++dated <= MAX_DATE_RESOLUTIONS;
+    });
+    if (dated > MAX_DATE_RESOLUTIONS) packet.notes.push(`Only the first ${MAX_DATE_RESOLUTIONS} distinct date references were looked up.`);
+    for (const resolution of distinct) {
       const resolved: ResolvedMemoryDate = { phrase: resolution.phrase, chosen: null, alternatives: [], assumption: null, note: null };
       packet.resolutions.push(resolved);
       if (resolution.kind === 'last_mention') {
@@ -47,8 +61,8 @@ export function recall(repo: Repo, input: Input): RecallPacket {
         continue;
       }
       const candidates = resolution.candidates.map(candidate => ({ candidate,
-        turns: repo.findTurnsByLocalDates([candidate], input.userMessageId),
-        matches: query ? repo.ftsTurnsOnDates(query, [candidate], excluded) : [],
+        turns: repo.turnKeysByLocalDates([candidate], input.userMessageId),
+        matches: query ? repo.ftsTurnIdsOnDates(query, [candidate], excluded) : [],
       }));
       const matching = candidates.filter(c => c.matches.length);
       const chosen = matching[0] ?? candidates.find(c => c.turns.length);
@@ -64,9 +78,9 @@ export function recall(repo: Repo, input: Input): RecallPacket {
         if (matching.length > 1) resolved.note = `also discussed on ${matching.slice(1).map(c => c.candidate.from).join(', ')}`;
       }
       if (query && !chosen.matches.length) resolved.note = 'No topic match on the selected date; these records do not establish that the requested topic was discussed.';
-      const matchingIds = new Set(chosen.matches.map(t => t.user.id));
-      const turns = chosen.turns.sort((a, b) => Number(matchingIds.has(b.user.id)) - Number(matchingIds.has(a.user.id)) || chronological(a, b));
-      turns.slice(0, 6).forEach(turn => attach(turn, matchingIds.has(turn.user.id) ? 'date+topic' : 'date'));
+      const matchingIds = new Set(chosen.matches);
+      const turns = chosen.turns.sort((a, b) => Number(matchingIds.has(b.id)) - Number(matchingIds.has(a.id)) || chronologicalKey(a, b));
+      turns.slice(0, 6).forEach(key => { if (!selected.has(key.id)) attach(repo.turn(key.id), matchingIds.has(key.id) ? 'date+topic' : 'date'); });
       if (turns.length > 6) resolved.note = [resolved.note, `+${turns.length - 6} more turns in this date range`].filter(Boolean).join('; ');
     }
     const recentIds = packet.currentConversation.flatMap(m => [m.id, ...(m.replyTo ? [m.replyTo] : [])]);
