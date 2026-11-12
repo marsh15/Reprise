@@ -1,6 +1,6 @@
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http';
 
-export type Denial = { status: 403 | 404 | 415; code: string; message: string };
+export type Denial = { status: 400 | 403 | 404 | 415; code: string; message: string };
 type Request = { method?: string; url?: string; headers: IncomingHttpHeaders };
 
 const readMethods = new Set(['GET', 'HEAD']);
@@ -15,18 +15,36 @@ export function allowedHosts(port: number) {
 export const isApiPath = (path: string) => path === '/api' || path.startsWith('/api/');
 
 /**
+ * The pathname Vite's router will see. Browsers send origin-form (`/path?q`); Node also accepts
+ * absolute-form (`http://host/path`), whose pathname Vite still routes. Anything else is null.
+ */
+function requestPathname(target: string) {
+  if (target.startsWith('/')) return target.split(/[?#]/)[0];
+  try {
+    const url = new URL(target);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.pathname : null;
+  } catch { return null; }
+}
+
+/**
  * Admission for every HTTP request, checked before Hono or Vite sees it.
  * Browser-origin protection only: a native process on this machine can send any headers,
  * so this does not separate local OS users (see docs/SECURITY-HARDENING.md).
  */
 export function admit(req: Request, hosts: Set<string>): Denial | null {
   const method = (req.method ?? 'GET').toUpperCase();
-  const path = (req.url ?? '/').split('?')[0];
+  const target = req.url ?? '/';
+  const path = target.split('?')[0];
   const host = one(req.headers.host)?.toLowerCase();
   // DNS rebinding: a foreign name resolving to 127.0.0.1 still carries its own Host.
   if (!host || !hosts.has(host)) return { status: 403, code: 'forbidden_host', message: 'Unexpected Host header.' };
-  // Vite's editor launcher is not needed by Reprise and any page could trigger it.
-  if (path.toLowerCase().startsWith('/__open-in-editor')) return { status: 404, code: 'not_found', message: 'Not found.' };
+  // Vite's editor launcher is not needed by Reprise and any page could trigger it. Match the parsed
+  // pathname, and for non-origin-form targets also the raw text, so no URL-parser difference reopens it.
+  const pathname = requestPathname(target);
+  if (pathname === null) return { status: 400, code: 'bad_request', message: 'Unsupported request target.' };
+  if (pathname.toLowerCase().startsWith('/__open-in-editor') || (!target.startsWith('/') && target.toLowerCase().includes('__open-in-editor'))) {
+    return { status: 404, code: 'not_found', message: 'Not found.' };
+  }
   if (!isApiPath(path)) return null;
 
   const read = readMethods.has(method);

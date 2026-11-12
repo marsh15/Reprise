@@ -41,7 +41,8 @@ export function recall(repo: Repo, input: Input): RecallPacket {
       const sources = turn.assistant ? repo.getSourcesForMessages([turn.assistant.id], 6)[0] : [];
       packet.recalledTurns.push(recalled(turn, sources, reason));
     };
-    // Identical phrases resolve identically, so keep the first of each. Only dated lookups are capped;
+    // Phrases that resolve to the same date candidates are consolidated, even when worded differently
+    // ("today" and "this morning"); the first phrase is kept. Only dated lookups are capped;
     // a "last time we discussed" reference is one bounded query and is never dropped.
     const seen = new Set<string>(); let dated = 0;
     const distinct = resolutions.filter(r => {

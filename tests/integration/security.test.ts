@@ -128,6 +128,21 @@ it('never launches the editor, whatever the request shape', async () => {
   for (const headers of shapes) for (const path of ['/__open-in-editor?file=README.md', '/__OPEN-IN-EDITOR?file=README.md', '/__open-in-editor/x?file=README.md', `/__open-in-editor?file=${encodeURIComponent(`file://${join(repo, 'README.md')}`)}`]) {
     expect([403, 404], `${path} ${JSON.stringify(headers)}`).toContain((await raw('GET', path, headers)).status);
   }
+  // Absolute-form, encoded and path-variant request targets, sent raw with a valid Host.
+  const variants = [`http://localhost:${port}/__open-in-editor?file=README.md`, `HTTP://LOCALHOST:${port}/__OPEN-IN-EDITOR?file=README.md`,
+    'http://evil.example/__open-in-editor?file=README.md', `http://localhost:${port}/x/../__open-in-editor?file=README.md`,
+    `http://localhost:${port}\\__open-in-editor?file=README.md`, `http://localhost:${port}:1/__open-in-editor?file=README.md`, `localhost:${port}/__open-in-editor?file=README.md`,
+    '/%5F%5Fopen-in-editor?file=README.md', '/%5f%5fopen-in-editor?file=README.md', '//__open-in-editor?file=README.md', '/./__open-in-editor?file=README.md',
+    '/x/../__open-in-editor?file=README.md', '/__open-in-editor%3Ffile=README.md', '/__open-in-editor.json?file=README.md', '/__open-in-editor/?file=README.md'];
+  for (const path of variants) {
+    const response = await raw('GET', path, { 'sec-fetch-site': 'same-origin' });
+    // Undecoded or non-matching paths fall through to the SPA page; what matters is that nothing launches.
+    if (response.status === 200) expect(response.body, path).toContain('<div id="root">');
+    await new Promise(r => setTimeout(r, 100));
+    expect(existsSync(editorLog), path).toBe(false);
+  }
+  // Ordinary development routes still answer, including in absolute form.
+  expect((await raw('GET', `http://localhost:${port}/@vite/client`, { 'sec-fetch-site': 'same-origin' })).status).toBe(200);
   await new Promise(r => setTimeout(r, 300));
   expect(existsSync(editorLog)).toBe(false);
 });

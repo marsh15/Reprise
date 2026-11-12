@@ -38,7 +38,7 @@ Remaining risk: Reprise still has no authentication. Any local process, or any o
 
 Ordering, `date+topic`/`date` reasons and the `+N more turns` count use the same keys as before. Retrieval per message is now bounded by the cap, independent of repetition count and of how many stored turns are hydrated.
 
-**S3: Vite editor opening.** *Root cause:* Vite mounts `launch-editor-middleware` at `/__open-in-editor` with no origin or intent check, and connect prefix-matches case-insensitively. *Fix:* `admit()` answers 404 for any path whose lowercase form starts with `/__open-in-editor`, before Vite runs. The same guard (`createGuard`) now also fronts the three browser-fixture helpers that start their own Vite (`tests/helpers/{memory,quality,research}Preview.ts`). The independent review showed the editor still launched through them. Reprise does not need the feature. The only loss is the Vite error overlay's "open in editor" click.
+**S3: Vite editor opening.** *Root cause:* Vite mounts `launch-editor-middleware` at `/__open-in-editor` with no origin or intent check, and connect prefix-matches case-insensitively. *Fix:* `admit()` answers 404 when the request's parsed pathname starts with `/__open-in-editor` (case-insensitive), before Vite runs. Vite's router also reads the pathname of absolute-form targets (`GET http://host/__open-in-editor?file=…`), which browsers never send but a local process can. The check therefore parses those too, also matches their raw text, and rejects unparseable or non-HTTP targets with 400. The final PR review found this absolute-form bypass; it was fixed in a follow-up commit. The same guard (`createGuard`) now also fronts the three browser-fixture helpers that start their own Vite (`tests/helpers/{memory,quality,research}Preview.ts`). The independent review showed the editor still launched through them. Reprise does not need the feature. The only loss is the Vite error overlay's "open in editor" click.
 
 **S4: Vite workspace-file disclosure.** *Root cause:* in middleware mode, Vite's default `fs.allow` is the workspace root, its deny list does not cover `data/` or `*.db`, and its default CORS allows every `localhost:*` origin. *Fix (`vite.config.ts`):*
 - `server.fs.allow` is limited to absolute `src/client`, `src/shared` and `node_modules`.
@@ -52,7 +52,7 @@ Ordering, `date+topic`/`date` reasons and the `+N more turns` count use the same
 *Now (`Message.tsx`, `thread.css`):* assistant Markdown never produces an `<img>`.
 - An `http(s)` image becomes a small muted link reading "Image not loaded: alt-or-hostname". It opens only on click, with `target=_blank`, `rel="noopener noreferrer"` and `referrerPolicy="no-referrer"`, and has an accessible label.
 - Any other source (`data:`, `javascript:`, `file:`, `blob:`, relative, protocol-relative, malformed, a `#citation-N` target) becomes inert text.
-- A Markdown link wrapping an image keeps the link's own destination and shows the image's alt text, so links are never nested.
+- An image anywhere inside a Markdown link (including inside bold or mixed with text) renders as plain "Image not loaded" text. The link keeps its own destination and its other text, so links are never nested.
 - Existing link, citation, table and code behaviour is unchanged. The style uses existing tokens only.
 
 *Browser evidence (Chrome via DevTools, real dev server):* a conversation was seeded with images in a paragraph, reference style, inside a link, in a table cell, in a blockquote, plus `exfil.invalid`, `data:`, `javascript:`, and inline-code and fenced-code variants. The local request counter that stood in for the attacker host recorded **0 requests** across:
@@ -125,7 +125,7 @@ The deterministic bound in `tests/unit/recall-bounds.test.ts` uses no timing ass
 | Unit | `recall-bounds.test.ts` | Work bound and preserved recall semantics |
 | Unit (SSR render) | `markdown-images.test.ts` | No `<img>`, safe hrefs, links and citations intact |
 | Unit (filesystem) | `db-permissions.test.ts` | 0700 directory, 0600 DB/WAL/SHM, existing files untouched |
-| Integration (real process, dev/Vite, raw HTTP) | `tests/integration/security.test.ts` | Hostile mutations leave no side effects; cross-origin DELETE and cancel refused; owner JSON, charset JSON and non-browser JSON succeed; private GETs refuse rebinding and cross-site with no CORS grant; editor never launches under 20 request shapes; `/@fs` and traversal variants serve nothing private; client and HMR runtime load |
+| Integration (real process, dev/Vite, raw HTTP) | `tests/integration/security.test.ts` | Hostile mutations leave no side effects; cross-origin DELETE and cancel refused; owner JSON, charset JSON and non-browser JSON succeed; private GETs refuse rebinding and cross-site with no CORS grant; editor never launches under 20 request shapes or 15 absolute-form, encoded and path-variant targets (spy log checked after each); `/@fs` and traversal variants serve nothing private; client and HMR runtime load |
 | Browser (Chrome, real dev server) | Manual run (section D) | Zero automatic image requests; deliberate click; send, delete and cancel through the gate |
 | Production mode | Raw HTTP | Gate verified (section A results) |
 
@@ -158,7 +158,7 @@ These were run after the last source edit (2026-11-13), in the security worktree
 | Command | Result |
 |---|---|
 | `npm run typecheck` | exit 0 |
-| `npm test` | **687/687** passed in 46 files (baseline 580; +107 new) |
+| `npm test` | **703/703** passed in 46 files (baseline 580; +123 new) |
 | `npm run build` | built; only the pre-existing chunk-size warning |
 | `npm run eval -- --mock` | **23/23** PASS |
 | `npm run eval -- --mock --only R1,R2,R3` | **3/3** PASS |
@@ -187,6 +187,12 @@ The Chrome check (section D) and the production probe ran on the code just befor
 - negative-test quality
 
 No disagreement remains, other than finding 2, which is left for the owner.
+
+**Final PR review** (fresh Claude Opus High agent, read-only; the requested GPT-6 Astra reviewer was unavailable because of a provider usage limit):
+- One low finding, fixed: absolute-form editor requests bypassed the path check (native local clients only).
+- One related renderer issue, fixed: an image nested deeper inside a link still produced nested links, and mixed link text was dropped. No image was ever fetched.
+- Deduplication of differently worded phrases that resolve to the same date is intended, and the code comment now says so.
+- A production deep link such as `/c/abc` answers 400/404 identically on `82427d2` and this branch. It is pre-existing and unrelated: the client has no path routes.
 
 ## O. Residual risk
 

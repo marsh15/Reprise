@@ -7,7 +7,7 @@ const id = '3f2b8c1e-0d4a-4b5e-9a7c-1e2d3c4b5a69';
 const same: H = { host: 'localhost:5173', origin: 'http://localhost:5173', 'sec-fetch-site': 'same-origin' };
 const json: H = { ...same, 'content-type': 'application/json', 'content-length': '50' };
 const call = (method: string, url: string, headers: H) => admit({ method, url, headers }, hosts);
-const deny = (status: 403 | 404 | 415, code: string) => ({ status, code });
+const deny = (status: 400 | 403 | 404 | 415, code: string) => ({ status, code });
 const turns = '/api/turns';
 
 describe('request admission policy', () => {
@@ -80,6 +80,21 @@ describe('request admission policy', () => {
     });
     it.each(['/__open-in-editor?file=README.md', '/__OPEN-IN-EDITOR?file=x', '/__open-in-editor/x'])('reports forbidden_host for %s with a bad host', (url) => {
       expect(call('GET', url, { ...same, host: 'attacker.example:5173' })).toEqual(expect.objectContaining(deny(403, 'forbidden_host')));
+    });
+    // Vite's router reads the pathname of absolute-form targets, which browsers never send.
+    it.each(['http://localhost:5173/__open-in-editor?file=README.md', 'HTTP://LOCALHOST:5173/__OPEN-IN-EDITOR?file=x',
+      'http://evil.example/__open-in-editor?file=x', 'https://localhost:5173/__open-in-editor', 'http://localhost:5173/x/../__open-in-editor?file=x',
+      'http://localhost:5173/./__open-in-editor', 'http://localhost:5173\\__open-in-editor?file=x', 'http://user@localhost:5173/__open-in-editor?file=x',
+      'http://localhost:5173/?next=/__open-in-editor'])('hides absolute-form %s behind 404', (url) => {
+      expect(call('GET', url, same)).toEqual(expect.objectContaining(deny(404, 'not_found')));
+    });
+    it.each(['*', 'localhost:5173/__open-in-editor', 'file:///etc/hosts', 'http://localhost:5173:99/__open-in-editor', 'javascript:alert(1)'])('rejects unparseable or non-HTTP target %s', (url) => {
+      expect(call('GET', url, same)).toEqual(expect.objectContaining(deny(400, 'bad_request')));
+    });
+    it('still admits ordinary absolute-form and origin-form paths', () => {
+      expect(call('GET', 'http://localhost:5173/main.tsx', same)).toBeNull();
+      expect(call('GET', '/main.tsx?import', same)).toBeNull();
+      expect(call('GET', '/?q=__open-in-editor', same)).toBeNull();
     });
   });
 

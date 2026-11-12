@@ -48,6 +48,13 @@ describe('assistant markdown images never load', () => {
     expect(html.match(/<a /g)).toHaveLength(1); expect(html).toContain('href="https://example.com/page"');
     expect(html).not.toContain('exfil.invalid'); expect(html).toContain('Image not loaded: nested');
   });
+  it('never nests links or drops link text when an image sits deeper inside a link', () => {
+    const wrapped = render('[**![x](https://exfil.invalid/i.png)**](https://example.com/page)');
+    expect(wrapped.match(/<a /g)).toHaveLength(1); expect(wrapped).not.toContain('exfil.invalid'); expect(wrapped).toContain('Image not loaded: x');
+    const mixed = render('[*see* ![x](https://exfil.invalid/i.png) here](https://example.com/page)');
+    expect(mixed.match(/<a /g)).toHaveLength(1); expect(mixed).toContain('<em>see</em>'); expect(mixed).toContain(' here');
+    expect(mixed).not.toContain('exfil.invalid'); expect(fetches(mixed)).toBe(false);
+  });
   it('uses the hostname as the name when alt text is empty', () => {
     const html = render('![](https://exfil.invalid/p.png)');
     expect(html).toContain('Image not loaded: exfil.invalid'); expect(html).toContain('aria-label="Image not loaded: exfil.invalid.');
