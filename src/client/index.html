@@ -2,9 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fafaf9" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Hex values must mirror --color-canvas in tokens.css (a meta tag cannot read CSS variables). theme.ts keeps them in step with an explicit choice. -->
+    <meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161917" media="(prefers-color-scheme: dark)" />
     <title>Reprise</title>
+    <!-- Applies a stored Light/Dark choice before first paint so there is no flash. System = no attribute. Keep the key in sync with theme.ts. -->
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('reprise.theme');
+          if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+        } catch (error) { /* Storage can be blocked; the OS preference applies. */ }
+      })();
+    </script>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/base.css" />
+    <link rel="stylesheet" href="/shell.css" />
+    <link rel="stylesheet" href="/thread.css" />
+    <link rel="stylesheet" href="/evidence.css" />
   </head>
   <body>
     <div id="root"></div>

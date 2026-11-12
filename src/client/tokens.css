@@ -1,0 +1,356 @@
+/*
+ * Reprise design tokens — the single authoritative token layer.
+ * Every colour, size, space, radius, shadow, duration and layer used by the client lives here;
+ * no other stylesheet may contain a colour literal or a z-index number. Values and the measured
+ * contrast ratios behind them are recorded in DESIGN-UI.md section 8.
+ *
+ * Theme mechanism (one, used everywhere):
+ *   :root                                   light values (the default, and what no-JS renders)
+ *   @media (prefers-color-scheme: dark)     dark values unless the user explicitly chose light
+ *   :root[data-theme="dark"]                dark values when the user explicitly chose dark
+ *   :root[data-theme="light"]               explicit light (restates the default, pins color-scheme)
+ * `data-theme` is written on <html> by the inline script in index.html before first paint and by
+ * src/client/theme.ts afterwards. "System" means the attribute is absent.
+ *
+ * The dark block is written twice (media query and explicit attribute) because plain CSS cannot
+ * share a declaration list between the two selectors. Keep the two blocks identical: edit one, then
+ * copy it to the other (they differ only in indentation and the :not([data-theme="light"]) guard).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-canvas: #f7f6f2;
+  --color-sidebar: #efeee8;
+  --color-raised: #ffffff;
+  --color-sunken: #ecebe4;
+  --color-overlay: rgb(27 35 31 / 0.32);
+
+  /* Text */
+  --color-text: #1b231f;
+  --color-text-secondary: #46514b;
+  --color-text-muted: #56605a;
+  --color-text-disabled: #8c938e;
+
+  /* Borders */
+  --color-border: #dad8cf;
+  --color-border-strong: #7e847b;
+  --color-divider: #e3e1d9;
+
+  /* Accent (petrol green) */
+  --color-accent: #22695a;
+  --color-accent-hover: #1b5649;
+  --color-accent-pressed: #144538;
+  --color-accent-subtle: #e1eee9;
+  --color-on-accent: #ffffff;
+  --color-nav-selected: var(--color-raised);
+  --color-focus: #22695a;
+  --color-selection: #c6e0d6;
+
+  /* Neutral solid (Stop button) */
+  --color-neutral-solid: #46514b;
+  --color-neutral-solid-hover: #3a453f;
+  --color-on-neutral-solid: #ffffff;
+
+  /* Provenance: searched for this answer (filled dot) */
+  --color-current-ink: #2b5683;
+  --color-current-subtle: #e5ecf4;
+  --color-current-border: #a9bfd8;
+  --color-current-mark: #3a6ea5;
+  /* Provenance: from earlier (hollow ring) */
+  --color-historical-ink: #74386c;
+  --color-historical-subtle: #f3e8f1;
+  --color-historical-border: #cfaeca;
+  --color-historical-mark: #7a3e72;
+  /* Provenance: demo fixture (dashed outline) */
+  --color-demo-ink: #575b54;
+  --color-demo-subtle: #e9e8e2;
+  --color-demo-border: #858880;
+
+  /* Check status */
+  --color-research-ink: var(--color-accent);
+  --color-verified-ink: #365a4c;
+  --color-verified-subtle: #e4ede8;
+  --color-unverified-ink: #744d00;
+  --color-unverified-subtle: #f7ebc6;
+  --color-unverified-border: #a57610;
+  --color-invalid-ink: #9a4420;
+  --color-invalid-subtle: #f8e7dc;
+  --color-invalid-border: #b3603c;
+
+  /* State */
+  --color-success-ink: #2a6a3b;
+  --color-success-subtle: #e2f0e5;
+  --color-warning-ink: var(--color-unverified-ink);
+  --color-warning-subtle: var(--color-unverified-subtle);
+  --color-warning-border: var(--color-unverified-border);
+  --color-error-ink: #a02727;
+  --color-error-subtle: #f9e4e1;
+  --color-error-border: #b65c56;
+  --color-destructive-solid: #a02727;
+  --color-destructive-solid-hover: #8a1f1f;
+  --color-on-destructive: #ffffff;
+  --color-clock-ink: #5a4100;
+  --color-clock-subtle: #f4e8c1;
+
+  /* Elevation */
+  --shadow-ink: 27 35 31;
+  --shadow-popover: 0 8px 24px rgb(var(--shadow-ink) / 0.1), 0 1px 3px rgb(var(--shadow-ink) / 0.08);
+  --shadow-drawer: 0 0 40px rgb(var(--shadow-ink) / 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-canvas: #161917;
+    --color-sidebar: #121412;
+    --color-raised: #1f2320;
+    --color-sunken: #0f110f;
+    --color-overlay: rgb(0 0 0 / 0.55);
+
+    --color-text: #e6e4dd;
+    --color-text-secondary: #b4b9b2;
+    --color-text-muted: #9aa19a;
+    --color-text-disabled: #5c625d;
+
+    --color-border: #2c312d;
+    --color-border-strong: #7b837b;
+    --color-divider: #262b27;
+
+    --color-accent: #6fb8a4;
+    --color-accent-hover: #86c7b5;
+    --color-accent-pressed: #9ad2c2;
+    --color-accent-subtle: #1e3029;
+    --color-on-accent: #0f1d18;
+    --color-nav-selected: var(--color-raised);
+    --color-focus: #7fc4b0;
+    --color-selection: #264236;
+
+    --color-neutral-solid: #b4b9b2;
+    --color-neutral-solid-hover: #c3c8c1;
+    --color-on-neutral-solid: #0f110f;
+
+    --color-current-ink: #9dbfe6;
+    --color-current-subtle: #1c2733;
+    --color-current-border: #3c5470;
+    --color-current-mark: #7fa9d8;
+    --color-historical-ink: #d2a9cc;
+    --color-historical-subtle: #2d2030;
+    --color-historical-border: #5b4260;
+    --color-historical-mark: #c08fba;
+    --color-demo-ink: #aeb1a8;
+    --color-demo-subtle: #232622;
+    --color-demo-border: #7f837b;
+
+    --color-research-ink: var(--color-accent);
+    --color-verified-ink: #a5cdbb;
+    --color-verified-subtle: #1d2a24;
+    --color-unverified-ink: #e3bc6a;
+    --color-unverified-subtle: #2e2916;
+    --color-unverified-border: #a38340;
+    --color-invalid-ink: #e79c79;
+    --color-invalid-subtle: #34231b;
+    --color-invalid-border: #b07458;
+
+    --color-success-ink: #8ccb9a;
+    --color-success-subtle: #1c2c21;
+    --color-warning-ink: var(--color-unverified-ink);
+    --color-warning-subtle: var(--color-unverified-subtle);
+    --color-warning-border: var(--color-unverified-border);
+    --color-error-ink: #ee9a94;
+    --color-error-subtle: #2b2120;
+    --color-error-border: #b06b66;
+    --color-destructive-solid: #e58b84;
+    --color-destructive-solid-hover: #ee9a94;
+    --color-on-destructive: #1f0e0d;
+    --color-clock-ink: #e6cb86;
+    --color-clock-subtle: #2c2512;
+
+    --shadow-ink: 0 0 0;
+    --shadow-popover: 0 8px 24px rgb(var(--shadow-ink) / 0.4), 0 1px 3px rgb(var(--shadow-ink) / 0.3);
+    --shadow-drawer: 0 0 40px rgb(var(--shadow-ink) / 0.5);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #161917;
+  --color-sidebar: #121412;
+  --color-raised: #1f2320;
+  --color-sunken: #0f110f;
+  --color-overlay: rgb(0 0 0 / 0.55);
+
+  --color-text: #e6e4dd;
+  --color-text-secondary: #b4b9b2;
+  --color-text-muted: #9aa19a;
+  --color-text-disabled: #5c625d;
+
+  --color-border: #2c312d;
+  --color-border-strong: #7b837b;
+  --color-divider: #262b27;
+
+  --color-accent: #6fb8a4;
+  --color-accent-hover: #86c7b5;
+  --color-accent-pressed: #9ad2c2;
+  --color-accent-subtle: #1e3029;
+  --color-on-accent: #0f1d18;
+  --color-nav-selected: var(--color-raised);
+  --color-focus: #7fc4b0;
+  --color-selection: #264236;
+
+  --color-neutral-solid: #b4b9b2;
+  --color-neutral-solid-hover: #c3c8c1;
+  --color-on-neutral-solid: #0f110f;
+
+  --color-current-ink: #9dbfe6;
+  --color-current-subtle: #1c2733;
+  --color-current-border: #3c5470;
+  --color-current-mark: #7fa9d8;
+  --color-historical-ink: #d2a9cc;
+  --color-historical-subtle: #2d2030;
+  --color-historical-border: #5b4260;
+  --color-historical-mark: #c08fba;
+  --color-demo-ink: #aeb1a8;
+  --color-demo-subtle: #232622;
+  --color-demo-border: #7f837b;
+
+  --color-research-ink: var(--color-accent);
+  --color-verified-ink: #a5cdbb;
+  --color-verified-subtle: #1d2a24;
+  --color-unverified-ink: #e3bc6a;
+  --color-unverified-subtle: #2e2916;
+  --color-unverified-border: #a38340;
+  --color-invalid-ink: #e79c79;
+  --color-invalid-subtle: #34231b;
+  --color-invalid-border: #b07458;
+
+  --color-success-ink: #8ccb9a;
+  --color-success-subtle: #1c2c21;
+  --color-warning-ink: var(--color-unverified-ink);
+  --color-warning-subtle: var(--color-unverified-subtle);
+  --color-warning-border: var(--color-unverified-border);
+  --color-error-ink: #ee9a94;
+  --color-error-subtle: #2b2120;
+  --color-error-border: #b06b66;
+  --color-destructive-solid: #e58b84;
+  --color-destructive-solid-hover: #ee9a94;
+  --color-on-destructive: #1f0e0d;
+  --color-clock-ink: #e6cb86;
+  --color-clock-subtle: #2c2512;
+
+  --shadow-ink: 0 0 0;
+  --shadow-popover: 0 8px 24px rgb(var(--shadow-ink) / 0.4), 0 1px 3px rgb(var(--shadow-ink) / 0.3);
+  --shadow-drawer: 0 0 40px rgb(var(--shadow-ink) / 0.5);
+}
+
+/* Theme-independent tokens */
+:root {
+  /* Glyph asset used as a CSS mask (alpha only, so no colour is baked in): the external-link mark on card links */
+  --glyph-external: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 3H13v3.5M13 3L7.5 8.5M11 9.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2.5'/%3E%3C/svg%3E");
+
+  /* Type: families (DESIGN-UI.md section 4; system faces only, no remote fonts) */
+  --font-serif: "Iowan Old Style", "Charter", "New York", ui-serif, "Sitka Text", Cambria, Georgia, serif;
+  --font-sans: ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Type: size scale (rem; 1rem = 16px, so the scale follows the user's browser font size) */
+  --text-2xs: 0.71875rem; /* 11.5 tags */
+  --text-xs: 0.78125rem; /* 12.5 metadata, captions */
+  --text-sm: 0.84375rem; /* 13.5 research details, code, small UI */
+  --text-base: 0.90625rem; /* 14.5 UI base, sidebar titles, buttons */
+  --text-table: 0.875rem; /* 14 answer tables */
+  --text-md: 1rem; /* 16 user messages, inputs */
+  --text-read-sm: 1.03125rem; /* 16.5 answer text on phones */
+  --text-read: 1.0625rem; /* 17 answer reading text */
+  --text-h1: 1.25rem; /* 20 answer h1/h2 */
+  --text-h2: 1.0625rem; /* 17 */
+  --text-h3: 0.96875rem; /* 15.5 */
+  --text-wordmark: 1.3125rem; /* 21 */
+  --text-display: clamp(1.5rem, 1rem + 2.2vw, 2.125rem); /* 24–34 empty-state statement (24 only on the narrowest phones) */
+
+  /* Type: line heights and weights */
+  --leading-read: 1.62;
+  --leading-user: 1.55;
+  --leading-ui: 1.4;
+  --leading-meta: 1.45;
+  --leading-code: 1.55;
+  --leading-display: 1.18;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Spacing (4px base) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Shape */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+  --border-width: 1px;
+  --border-width-accent: 2px;
+  --border-width-rule: 3px;
+
+  /* Focus */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Motion */
+  --duration-fast: 100ms;
+  --duration-base: 160ms;
+  --duration-slow: 220ms;
+  --duration-drawer: 240ms;
+  --duration-highlight-out: 700ms; /* recall highlight fade-out: slow on purpose, it hands the eye back to the text */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* entering and exiting: strong ease-out */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* on-screen movement */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sliding panel */
+  --ease-standard: ease; /* hover and colour changes */
+  --press-scale: 0.96; /* tactile press feedback; never smaller than 0.95 */
+
+  /* Layout */
+  --sidebar-width: clamp(272px, 17rem, 40vw); /* 272px at default size; grows with the user's font size */
+  --gutter-width: 112px;
+  --measure: 680px;
+  --composer-max-height: 218px;
+  --context-bar-height: 48px; /* used as min-height so enlarged text is never clipped */
+  --context-bar-height-short: 40px;
+  --topbar-height: 52px;
+  --drawer-width: min(320px, 86vw);
+  --gutter-page: var(--space-6);
+  --touch-target: 44px;
+  --marker-hit: 28px;
+  --card-width: 320px;
+
+  /* Layers (DESIGN-UI.md section 3) */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-popover: 30;
+  --z-drawer-backdrop: 40;
+  --z-drawer: 50;
+  --z-skip-link: 60;
+}
+
+@media (max-width: 767px) {
+  :root { --gutter-page: var(--space-4); }
+}
+@media (max-width: 360px) {
+  :root { --gutter-page: var(--space-3); }
+}

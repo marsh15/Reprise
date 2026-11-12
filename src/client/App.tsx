@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { RecallItem } from '../shared/memory';
 import type { Conversation } from '../shared/types';
 import { deleteConversation, listConversations } from './api';
+import { IconClock, IconWarning } from './components/Glyphs';
 import { Sidebar } from './components/Sidebar';
 import { Thread } from './components/Thread';
 
@@ -37,20 +38,24 @@ export function App() {
   }
   function created(id: string) { setSelected(id); remember(id); void refresh(); }
   async function remove(id: string) {
-    if (!window.confirm("Delete conversation and its sources? This can\'t be undone.")) return;
+    // The confirmation lives in the sidebar's options menu; this is only reached once confirmed.
     try {
       await deleteConversation(id); if (selected === id) select(null); await refresh();
       document.querySelector<HTMLButtonElement>('.new-chat')?.focus();
     }
     catch { setError('Could not delete the conversation. Try again from its options menu.'); }
   }
+  const current = conversations.find(conversation => conversation.id === selected);
+  const context = { title: selected ? current ? current.title || 'Untitled conversation' : 'Conversation' : null, origin: current?.origin };
   return <>
     <a className="skip-link" href="#chat">Skip to conversation</a>
-    {clock && <div className="clock-banner" role="status">Test clock active: now = {clock}</div>}
-    {error && <div className="error app-error" role="alert">{error} <button onClick={() => void refresh()}>Reload conversations</button></div>}
     <div className="app-shell">
-      <Sidebar historyState={historyLoaded ? 'ready' : error ? 'unavailable' : 'loading'} conversations={conversations} selected={selected} now={clock ?? undefined} onSelect={id => select(id)} onNew={() => select(null)} onDelete={id => void remove(id)} />
-      <Thread key={threadKey} conversationId={selected} onCreated={created} onChange={() => void refresh()} historyEmpty={historyLoaded && conversations.length === 0} target={target} onRecall={navigateRecall} onTargetHandled={() => setTarget(null)} />
+      <Sidebar historyState={historyLoaded ? 'ready' : error ? 'unavailable' : 'loading'} conversations={conversations} selected={selected} now={clock ?? undefined} context={context} onSelect={id => select(id)} onNew={() => select(null)} onDelete={id => void remove(id)} />
+      <div className="workspace">
+        {clock && <div className="clock-notice" role="status"><IconClock /><span className="clock-text"><span className="clock-label">Test clock active: now = </span><span className="clock-instant">{clock}</span></span></div>}
+        {error && <div className="app-notice" role="alert"><IconWarning /><span>{error}</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => void refresh()}>Reload conversations</button></div>}
+        <Thread key={threadKey} conversationId={selected} title={context.title} origin={context.origin} onCreated={created} onChange={() => void refresh()} historyEmpty={historyLoaded && conversations.length === 0} target={target} onRecall={navigateRecall} onTargetHandled={() => setTarget(null)} />
+      </div>
     </div>
   </>;
 }
