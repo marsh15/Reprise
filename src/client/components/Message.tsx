@@ -22,9 +22,17 @@ export function Message({ message, running = false, onRecall, highlighted = fals
     <div className="message-main">
       {!user && !!message.recall?.length && <RecallRow items={message.recall} onNavigate={onRecall} />}
       {!user && message.evidence && <ResearchStatus searches={message.evidence.searches} sources={message.evidence.sources} running={running && message.evidence.searches.some(s => s.status === 'error' && !s.error)} />}
-      {user ? <div className="message-bubble"><p>{message.content}</p></div> : <div className="prose"><Markdown remarkPlugins={[remarkGfm, citationMarkdown]} urlTransform={url => /^(https?:\/\/|#citation-\d+$)/i.test(url) ? url : ''} components={{ table: ({ children, node: _node, ...props }) => <div className="table-scroll" role="region" aria-label="Table" tabIndex={0}><table {...props}>{children}</table></div>, a: ({ href, children, node: _node, ...props }) => {
+      {user ? <div className="message-bubble"><p>{message.content}</p></div> : <div className="prose"><Markdown remarkPlugins={[remarkGfm, citationMarkdown]} urlTransform={url => /^(https?:\/\/|#citation-\d+$)/i.test(url) ? url : ''} components={{ img: ({ src, alt }) => {
+        const url = typeof src === 'string' && /^https?:\/\//i.test(src) ? src : '';
+        let host = ''; try { host = url ? new URL(url).hostname : ''; } catch { /* inert below */ }
+        if (!host) return <span className="blocked-image">Image removed{alt ? `: ${alt}` : ''}</span>;
+        return <a className="blocked-image" href={url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label={`Image not loaded: ${alt || host}. Opens external image in a new tab`}>Image not loaded: {alt || host}</a>;
+      }, table: ({ children, node: _node, ...props }) => <div className="table-scroll" role="region" aria-label="Table" tabIndex={0}><table {...props}>{children}</table></div>, a: ({ href, children, node, ...props }) => {
         const marker = href?.match(/^#citation-(\d+)$/);
-        if (!marker) return <a {...props} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+        // A linked image would otherwise nest the image's own link inside this one.
+        const image = node?.children.find(child => child.type === 'element' && child.tagName === 'img');
+        const label = image?.type === 'element' ? `Image not loaded: ${String(image.properties.alt ?? '') || 'linked image'}` : null;
+        if (!marker) return <a {...props} {...(label && { className: 'blocked-image' })} href={href} target="_blank" rel="noopener noreferrer">{label ?? children}</a>;
         const n = Number(marker[1]);
         const observations = message.evidence?.sources.filter(source => source.n === n) ?? [];
         const record = message.evidence?.citations.find(c => c.marker === n);

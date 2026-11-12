@@ -68,7 +68,7 @@
 .prose :not(pre) > code { padding: 0.1em 0.35em; border-radius: var(--radius-xs); background: var(--color-sunken); font-size: 0.86em; overflow-wrap: anywhere; }
 .prose pre { margin: 1em 0; padding: var(--space-3) var(--space-4); overflow-x: auto; border-radius: var(--radius-sm); background: var(--color-sunken); font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-code); tab-size: 2; }
 .prose pre code { font: inherit; }
-.prose img { max-width: 100%; height: auto; }
+.prose .blocked-image { font-family: var(--font-sans); font-size: var(--text-sm); color: var(--color-text-muted); }
 /* Each block picks its own direction from its first strong character, so an Arabic or Hebrew paragraph reads and aligns right-to-left inside an English answer. */
 .prose :is(p, li, h1, h2, h3, h4, blockquote, th, td), .message-bubble p { unicode-bidi: plaintext; }
 .table-scroll { margin: 1em 0; max-width: 100%; overflow-x: auto; }
