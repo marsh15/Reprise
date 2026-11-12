@@ -1,11 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Conversation } from '../../shared/types';
+import { fixedOrigin } from '../floating';
+import { BrandMark, DemoTag, IconClose, IconMenu, IconMore, IconPlus, IconTrash } from './Glyphs';
+import { ThemeControl } from './ThemeControl';
 
-export function Sidebar({ conversations, selected, now, historyState = 'ready', onSelect, onNew, onDelete }: {
-  conversations: Conversation[]; selected: string | null; now?: string; historyState?: 'loading' | 'ready' | 'unavailable'; onSelect: (id: string) => void; onNew: () => void; onDelete: (id: string) => void;
+const UNTITLED = 'Untitled conversation';
+
+export function Sidebar({ conversations, selected, now, historyState = 'ready', context, onSelect, onNew, onDelete }: {
+  conversations: Conversation[]; selected: string | null; now?: string; historyState?: 'loading' | 'ready' | 'unavailable';
+  /** Title and origin of the open conversation, shown in the mobile top bar. */
+  context?: { title: string | null; origin?: Conversation['origin'] };
+  onSelect: (id: string) => void; onNew: () => void; onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const menuPanel = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  const confirmId = useId();
   const sidebar = useRef<HTMLElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menuContainer = useRef<HTMLDivElement>(null);
@@ -85,6 +97,21 @@ export function Sidebar({ conversations, selected, now, historyState = 'ready', 
     };
   }, [open, menu]);
 
+  useEffect(() => { if (!menu) setConfirming(false); }, [menu]);
+  // Inline confirmation: Cancel takes focus first, so Enter cannot delete by accident.
+  useEffect(() => { if (confirming) cancel.current?.focus(); }, [confirming]);
+  // The menu is fixed-positioned from its button so the scrolling history list cannot clip it.
+  useLayoutEffect(() => {
+    const panel = menuPanel.current; const anchor = menuTrigger.current;
+    if (!menu || !panel || !anchor) return;
+    const origin = fixedOrigin(panel);
+    const rect = anchor.getBoundingClientRect();
+    const width = panel.offsetWidth; const height = panel.offsetHeight;
+    const left = Math.min(Math.max(rect.right - width, 8), window.innerWidth - 8 - width);
+    const top = rect.bottom + 4 + height > window.innerHeight - 8 ? Math.max(8, rect.top - 4 - height) : rect.bottom + 4;
+    panel.style.left = `${left - origin.x}px`; panel.style.top = `${top - origin.y}px`;
+  }, [menu, confirming]);
+
   const today = localDay(now ?? new Date().toISOString());
   const groups = ['Today', 'Yesterday', 'Previous 7 days', 'Earlier'].map(label => ({ label,
     items: conversations.filter(conversation => {
@@ -94,24 +121,40 @@ export function Sidebar({ conversations, selected, now, historyState = 'ready', 
     }),
   }));
   return <>
-    <button ref={trigger} className="drawer-toggle" aria-expanded={open} aria-controls="sidebar" onClick={() => open ? closeDrawer() : setOpen(true)}>Conversations</button>
-    {open && <button className="drawer-backdrop" aria-label="Close conversations" tabIndex={-1} onClick={closeDrawer} />}
+    <header className="topbar">
+      <button ref={trigger} type="button" className="drawer-toggle" aria-label="Conversations" aria-expanded={open} aria-controls="sidebar" onClick={() => open ? closeDrawer() : setOpen(true)}><IconMenu /></button>
+      <div className="topbar-title">{context?.title ? <><h1 className="topbar-name" title={context.title}>{context.title}</h1>{context.origin === 'fixture' && <DemoTag />}</> : <span className="wordmark"><BrandMark /><span>Reprise</span></span>}</div>
+    </header>
+    <button type="button" className={`drawer-backdrop${open ? ' is-open' : ''}`} aria-label="Close conversations" tabIndex={-1} onClick={closeDrawer} />
     <aside ref={sidebar} id="sidebar" className={open ? 'open' : ''} role={open ? 'dialog' : undefined} aria-modal={open ? true : undefined} aria-label="Conversations" tabIndex={open ? -1 : undefined}>
-      {open && <button className="drawer-close" onClick={closeDrawer}>Close conversations</button>}
-      <a className="wordmark" href="/">Reprise ↺</a>
-      <button className="new-chat" onClick={() => { onNew(); if (open) closeDrawer(); else setMenu(null); }}>New chat</button>
-      <nav aria-label="Conversation history">{conversations.length === 0 && <p role={historyState === 'loading' ? 'status' : undefined}>{historyState === 'loading' ? 'Loading conversations…' : historyState === 'unavailable' ? 'Conversation history unavailable.' : 'No conversations yet.'}</p>}{groups.filter(group => group.items.length).map(group => <section key={group.label} aria-label={group.label}>
+      <div className="sidebar-head">
+        <a className="wordmark" href="/"><BrandMark /><span>Reprise</span></a>
+        {open && <button type="button" className="drawer-close" aria-label="Close conversations" onClick={closeDrawer}><IconClose /></button>}
+      </div>
+      <button type="button" className="btn btn-secondary new-chat" onClick={() => { onNew(); if (open) closeDrawer(); else setMenu(null); }}><IconPlus />New conversation</button>
+      <nav aria-label="Conversation history" onScroll={() => { if (menu) setMenu(null); }}>{conversations.length === 0 && <p className="nav-state" role={historyState === 'loading' ? 'status' : undefined}>{historyState === 'loading' ? 'Loading conversations…' : historyState === 'unavailable' ? 'Conversation history unavailable.' : 'No conversations yet.'}</p>}{groups.filter(group => group.items.length).map(group => <section key={group.label} aria-label={group.label}>
         <h2>{group.label}</h2>
-        {group.items.map(conversation => <div className="conversation" key={conversation.id} ref={menu === conversation.id ? menuContainer : undefined}>
-          <button aria-current={selected === conversation.id ? 'page' : undefined} onClick={() => { onSelect(conversation.id); if (open) closeDrawer(); else setMenu(null); }}>
-            <strong>{conversation.title}</strong>
+        {group.items.map(conversation => <div className="conversation" key={conversation.id} data-selected={selected === conversation.id ? '' : undefined} ref={menu === conversation.id ? menuContainer : undefined}>
+          <button type="button" className="conversation-open" aria-current={selected === conversation.id ? 'page' : undefined} onClick={() => { onSelect(conversation.id); if (open) closeDrawer(); else setMenu(null); }}>
+            <strong>{conversation.title || UNTITLED}</strong>
             <span>{conversation.origin === 'fixture' ? 'Demo · ' : ''}{conversation.preview}</span>
           </button>
-          <button ref={menu === conversation.id ? menuTrigger : undefined} className="options" aria-label={`Options for ${conversation.title}`} aria-expanded={menu === conversation.id} onClick={() => setMenu(menu === conversation.id ? null : conversation.id)}>⋯</button>
-          {menu === conversation.id && <button className="delete-menu" onClick={() => { onDelete(conversation.id); setMenu(null); }}>Delete conversation</button>}
+          <button type="button" ref={menu === conversation.id ? menuTrigger : undefined} className="options" aria-label={`Options for ${conversation.title || UNTITLED}`} aria-expanded={menu === conversation.id} onClick={() => setMenu(menu === conversation.id ? null : conversation.id)}><IconMore /></button>
+          {menu === conversation.id && <div className="options-menu" ref={menuPanel} role="group" aria-label={`Delete ${conversation.title || UNTITLED}`} aria-describedby={confirming ? confirmId : undefined}>
+            {confirming ? <>
+              <p id={confirmId}>Delete conversation and its sources? This can't be undone.</p>
+              <div className="confirm-actions">
+                <button type="button" ref={cancel} className="btn btn-secondary btn-sm" onClick={() => { setMenu(null); menuTrigger.current?.focus(); }}>Cancel</button>
+                <button type="button" className="btn btn-destructive btn-sm" onClick={() => { const id = conversation.id; menuTrigger.current?.focus(); setMenu(null); onDelete(id); }}>Delete</button>
+              </div>
+            </> : <button type="button" className="menu-item" onClick={() => setConfirming(true)}><IconTrash />Delete conversation</button>}
+          </div>}
         </div>)}
       </section>)}</nav>
-      <p className="local-note">Conversations are saved on this device.</p>
+      <div className="sidebar-foot">
+        <ThemeControl />
+        <p className="local-note">Conversations are saved on this device.</p>
+      </div>
     </aside>
   </>;
 }

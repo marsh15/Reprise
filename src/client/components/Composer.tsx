@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { IconArrowUp, IconStop } from './Glyphs';
 
 export function Composer({ busy, disabled, onSend, onStop }: { busy: boolean; disabled: boolean; onSend: (text: string) => Promise<void>; onStop: () => void }) {
   const hintId = useId();
@@ -7,7 +8,7 @@ export function Composer({ busy, disabled, onSend, onStop }: { busy: boolean; di
   useEffect(() => {
     const input = textarea.current!;
     input.style.height = 'auto';
-    input.style.height = `${Math.min(input.scrollHeight + 2, 218)}px`;
+    input.style.height = `${input.scrollHeight}px`; // CSS max-height (--composer-max-height) caps it and the field scrolls
   }, [text]);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && busy && !event.defaultPrevented) onStop(); };
@@ -19,11 +20,15 @@ export function Composer({ busy, disabled, onSend, onStop }: { busy: boolean; di
     const value = text.trim(); setText(''); void onSend(value);
   }
   return <form className="composer" onSubmit={event => { event.preventDefault(); submit(); }}>
-    <textarea ref={textarea} aria-label="Message" aria-describedby={hintId} placeholder="Message Reprise…" value={text} maxLength={8000} rows={2}
-      onChange={event => setText(event.target.value)} onKeyDown={event => {
-        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
-      }} />
-    {busy ? <button type="button" onClick={onStop}>Stop</button> : <button disabled={disabled || !text.trim()}>Send</button>}
-    <small id={hintId}>Enter to send · Shift+Enter for a new line{busy ? ' · Esc to stop' : ''}</small>
+    <div className="composer-field">
+      <textarea ref={textarea} aria-label="Message" aria-describedby={hintId} placeholder="Message Reprise…" value={text} maxLength={8000} rows={1}
+        onChange={event => setText(event.target.value)} onKeyDown={event => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
+        }} />
+      {busy
+        ? <button type="button" className="composer-stop" onClick={onStop}><IconStop /><span>Stop</span></button>
+        : <button type="submit" className="composer-send" aria-label="Send" disabled={disabled || !text.trim()}><IconArrowUp /></button>}
+    </div>
+    <small id={hintId} className="composer-hint"><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for a new line{busy ? <> · <kbd>Esc</kbd> to stop</> : ''}</small>
   </form>;
 }
