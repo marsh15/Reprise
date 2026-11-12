@@ -1,13 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { migrations } from './schema';
 
 export function openDatabase(path: string) {
   let db: DatabaseSync | undefined;
   try {
-    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
+    const isNew = path !== ':memory:' && !existsSync(path);
+    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     db = new DatabaseSync(path);
+    if (isNew) chmodSync(path, 0o600); // before WAL so -wal/-shm inherit 0600
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000;');
     const connection = db;
     function transaction<T>(fn: () => T): T {
