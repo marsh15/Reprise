@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { getRequestListener } from '@hono/node-server';
 import { createServer as createViteServer } from 'vite';
 import { createApp } from '../../src/server/app';
+import { createGuard } from '../../src/server/requestPolicy';
 import { parseConfig } from '../../src/server/config';
 import { createClock } from '../../src/server/clock';
 import { openDatabase } from '../../src/server/db/db';
@@ -25,6 +26,7 @@ const turns = createTurnService(repo, input => {
 const server = createServer();
 const vite = await createViteServer({ server: { middlewareMode: true, hmr: { server } }, appType: 'spa' });
 const api = getRequestListener(createApp(config, clock, { repo, turns }).fetch);
-server.on('request', (req, res) => { if (req.url?.startsWith('/api/')) void api(req, res); else vite.middlewares(req, res); });
+const admitted = createGuard(5173);
+server.on('request', (req, res) => { if (!admitted(req, res)) return; if (req.url?.startsWith('/api/')) void api(req, res); else vite.middlewares(req, res); });
 server.listen(5173, '127.0.0.1', () => console.log('Research fixture ready at http://localhost:5173'));
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { server.close(); void turns.shutdown().then(() => vite.close()).then(() => store.close()); });

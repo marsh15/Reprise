@@ -12,6 +12,7 @@ import { createRepo } from './db/repo';
 import { createLlm } from './llm/client';
 import { createRunTurn } from './agent/runTurn';
 import { createTurnService } from './turns/service';
+import { createGuard, isApiPath } from './requestPolicy';
 
 async function main() {
   const config = loadConfig();
@@ -24,6 +25,8 @@ async function main() {
   const turns = createTurnService(repo, createRunTurn(createLlm(config), config, { now: clock.now }), clock, config.LLM_MODEL);
   const apiListener = getRequestListener(createApp(config, clock, { repo, turns }).fetch);
   const httpServer = createServer();
+  // Runs before Hono and Vite so neither can be reached by a rejected request.
+  const admitted = createGuard(config.PORT);
   let vite: import('vite').ViteDevServer | undefined;
 
   if (production) {
@@ -36,6 +39,7 @@ async function main() {
     });
     const webListener = getRequestListener(web.fetch);
     httpServer.on('request', (req, res) => {
+      if (!admitted(req, res)) return;
       if (isApi(req.url)) void apiListener(req, res);
       else void webListener(req, res);
     });
@@ -46,6 +50,7 @@ async function main() {
       appType: 'spa',
     });
     httpServer.on('request', (req, res) => {
+      if (!admitted(req, res)) return;
       if (isApi(req.url)) void apiListener(req, res);
       else vite!.middlewares(req, res);
     });
@@ -79,10 +84,7 @@ async function main() {
   }
 }
 
-function isApi(url = '/') {
-  const path = url.split('?')[0];
-  return path === '/api' || path.startsWith('/api/');
-}
+const isApi = (url = '/') => isApiPath(url.split('?')[0]);
 
 main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : 'Could not start Reprise.');
