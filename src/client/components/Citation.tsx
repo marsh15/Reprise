@@ -102,7 +102,7 @@ export function Citation({ marker, citation, source, observations = source ? [so
         })}</span>
         {citation?.state === 'verified' && <span className="card-check is-verified"><IconCheck />{observations.length > 1 ? 'Numbers and dates found across these observations; meaning and supporting date not checked.' : 'Numbers and dates found; meaning not checked.'}</span>}
         {citation?.state === 'unchecked' && <span className="card-check is-unchecked"><IconDash />No numbers or dates checked.</span>}
-        {citation?.state === 'unverified' && <span className="card-check is-unverified"><IconWarning />Token not found in source{citation.detail ? `: ${citation.detail.replace(/^not found in source:\s*/i, '')}` : '.'}</span>}
+        {citation?.state === 'unverified' && <span className="card-check is-unverified"><IconWarning />Not found in the cited excerpt{citation.detail ? `: ${citation.detail.replace(/^not found in (?:cited excerpt|source):\s*/i, '')}` : '.'}</span>}
       </>}
     </span>
   </span>;

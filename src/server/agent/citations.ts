@@ -7,6 +7,9 @@ export function citationMarkers(text: string): number[] {
 }
 const month = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
 const tokenPattern = new RegExp(`[$€£₹]\\s?\\d[\\d,]*(?:\\.\\d+)?|\\d[\\d,]*(?:\\.\\d+)?\\s?(?:USD|EUR|GBP|INR)\\b|\\d+(?:\\.\\d+)?%|\\bv?\\d+(?:\\.\\d+){2,}\\b|\\b\\d{4}-\\d{2}-\\d{2}(?=T|\\b)|\\b\\d{1,2} ${month}(?: \\d{4})?\\b|\\b${month} \\d{1,2}(?:, \\d{4})?\\b|\\b\\d[\\d,]*(?:\\.\\d+)?\\b`, 'gi');
+// "captured <date>" names an observation's recorded retrieval time. Only a date directly governed by that word takes
+// the retrieval role; "published", "announced", "effective" or "updated" dates still need excerpt or publication support.
+const capturedDate = new RegExp(`\\bcaptured:?\\s+(?:on\\s+)?(\\d{4}-\\d{2}-\\d{2}|\\d{1,2} ${month}(?: \\d{4})?|${month} \\d{1,2}(?:, \\d{4})?)(?![\\w-])`, 'gi');
 type Token = { raw: string; normalized: string };
 function tokens(text: string): Token[] {
   const clean = text.replace(MARKERS, '');
@@ -44,7 +47,8 @@ export function checkCitations(text: string, registry: Map<number, CitationSourc
   const subjects = [...new Set([...registry.values()].flatMap(s => s.subject ? [s.subject] : []))];
   for (const sentence of citationStatements(text)) {
     const markers = [...new Set(citationMarkers(sentence))];
-    const required = tokens(sentence);
+    const captured = tokens([...sentence.matchAll(capturedDate)].map(match => match[1]).join(' '));
+    const required = tokens(sentence.replace(capturedDate, ' '));
     const evidence = markers.flatMap(n => {
       const source = registry.get(n);
       const publication = /\bpublish/i.test(sentence) ? source?.publishedAt : '';
@@ -52,14 +56,16 @@ export function checkCitations(text: string, registry: Map<number, CitationSourc
       const dates = tokens([publication, retrieval].filter(Boolean).join(' ')).filter(t => t.normalized.startsWith('date:'));
       return [...tokens(source?.text ?? ''), ...dates];
     });
-    const missing = required.filter(token => !supported(token, evidence));
+    const retrievalDates = markers.flatMap(n => tokens(registry.get(n)?.retrievedAt ?? '').filter(t => t.normalized.startsWith('date:')));
+    const missing = [...required.filter(token => !supported(token, evidence)),
+      ...captured.filter(token => !supported(token, [...evidence, ...retrievalDates]))];
     for (const marker of markers) {
       const source = registry.get(marker);
       const named = subjects.filter(subject => sentence.match(/\b[A-Z][a-zA-Z]+\b/g)?.some(word => word.toLowerCase() === subject.toLowerCase()));
       const mismatched = source?.identity && named.length > 0 && !named.some(subject => new RegExp(`\\b${subject}\\b`, 'i').test(source.identity!));
-      const state = !source ? 'invalid' : mismatched ? 'unverified' : missing.length ? 'unverified' : required.length ? 'verified' : 'unchecked';
+      const state = !source ? 'invalid' : mismatched ? 'unverified' : missing.length ? 'unverified' : required.length || captured.length ? 'verified' : 'unchecked';
       const record: CitationRecord = { marker, sourceId: source?.sourceId ?? null, state,
-        detail: !source ? 'No matching source.' : mismatched ? `Cited observation does not name ${named.join(' or ')}; check attribution.` : missing.length ? `not found in source: ${[...new Set(missing.map(t => t.raw))].join(', ')}` : null };
+        detail: !source ? 'No matching source.' : mismatched ? `Cited observation does not name ${named.join(' or ')}; check attribution.` : missing.length ? `not found in cited excerpt: ${[...new Set(missing.map(t => t.raw))].join(', ')}` : null };
       if (!checked.has(marker) || severity[state] > severity[checked.get(marker)!.state]) checked.set(marker, record);
     }
   }
