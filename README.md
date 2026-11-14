@@ -8,9 +8,9 @@ Every answer keeps its sources as dated observations, so an earlier reading and 
 
 ## Reprise in action
 
-[![Reprise: two dated observations of one page, side by side, from the demo film](docs/assets/reprise-demo-poster.jpg)](docs/assets/reprise-demo.mp4?raw=true)
+https://github.com/user-attachments/assets/cedadd92-b445-49cb-8af8-0b82bbed8408
 
-*A 22-second silent film of the real interface. Select the poster to download the MP4 (2.4 MB). It is a scripted demonstration: the model and the search provider are scripted fixtures, every source is an invented `[Demo]` page, and no live provider was called.*
+*A 22-second silent film of the real interface, playable here. It is a scripted demonstration: the model and the search provider are scripted fixtures, every source is an invented `[Demo]` page, and no live provider was called. If the player does not load, [download the MP4](docs/assets/reprise-demo.mp4?raw=true) (2.4 MB).*
 
 ## What makes it different
 
