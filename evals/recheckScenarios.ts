@@ -1,6 +1,6 @@
 import type { Scenario } from './scenarios';
 import demo from '../scripts/fixtures/demo.json';
-import { grounded, fixtureDisclosure, mentions, limitation, undatedChangeClaims, hasSyntheticSearchEvidence, negativeAvailability, affirmativeShipment, uncertaintyDisclosure } from './assertions';
+import { grounded, fixtureDisclosure, mentions, limitation, undatedChangeClaims, hasSyntheticSearchEvidence, negativeAvailability, affirmativeShipment, uncertaintyDisclosure, originalErrorNotLaterChange } from './assertions';
 
 const crms = ['HubSpot', 'Pipedrive', 'Zoho', 'Salesforce', 'Close'];
 const queries = ['HubSpot Sales Hub Starter pricing', 'Pipedrive Essential pricing change', 'Zoho CRM Standard pricing', 'Salesforce Starter Suite pricing release', 'Close Startup standard pricing'];
@@ -54,6 +54,6 @@ export const recheckScenarios: Scenario[] = [
     assertMemory: p => p.currentConversation.some(m => /30 days/.test(m.content)) && p.carriedSources.length === 1 ? [] : ['old answer/evidence missing'],
     assert: r => [...grounded(r), ...fixtureDisclosure(r.text),
       ...(!/incorrect|wrong|inaccurate|no longer/i.test(r.text) ? ['incorrect historical answer not corrected'] : []),
-      ...(!/original error|already|at the time|never (?:correct|included)/i.test(r.text) ? ['original error not distinguished from later change'] : []),
+      ...(!/original error|already|at the time|never (?:correct|included)/i.test(r.text) && !originalErrorNotLaterChange(r.text) ? ['original error not distinguished from later change'] : []),
       ...(/(?:vendor|Launch|Neon) (?:has )?(?:changed|reduced|dropped)/i.test(r.text) ? ['original error presented as vendor change'] : [])] },
 ];

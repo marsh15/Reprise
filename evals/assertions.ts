@@ -89,7 +89,20 @@ export function citationIntegrity(r: TurnResult): string[] {
 }
 
 export const uncertaintyDisclosure = (text: string) => /unable to verify|cannot verify|(?:cannot|can't) (?:be )?establish(?:ed)?/i.test(normalizeLanguage(text))
-  || /\b(?:prior|historical|earlier) (?:\w+\s+){0,5}(?:terms|packaging|baseline|evidence)[^|\n]{0,100}(?:missing|incomplete|unspecified|undocumented|not (?:recorded|documented)|aren't documented)/i.test(normalizeLanguage(text));
+  || /\b(?:prior|historical|earlier) (?:\w+\s+){0,5}(?:terms|packaging|baseline|evidence)[^|\n]{0,100}(?:missing|incomplete|unspecified|undocumented|not (?:recorded|documented)|aren't documented)/i.test(normalizeLanguage(text))
+  // The passive form of "cannot be established", bound to the change, its timing or cause, or the historical terms.
+  // "No change is established" stays a separate category, and an unrelated "current price is not established" does not count.
+  || normalizeLanguage(text).split(/[.!?;\n]/).some(clause =>
+    /\b(?:changes?|differences?|increase|timing|cause|date|terms|packaging|baseline|history|commitment)\b[^|]{0,40}\b(?:is|are|was|were) not (?:yet )?established\b/i.test(clause)
+    || /\bno (?:\w+\s+){0,3}(?:date|timing|cause) is established\b/i.test(clause));
+
+// C3 asks the answer to separate an original error from a later vendor change. Negating the change counts only when the
+// historical baseline is also named, so a contradiction by current evidence alone is not enough.
+export function originalErrorNotLaterChange(text: string): boolean {
+  const normalized = normalizeLanguage(text);
+  return /\b(?:not|isn't|wasn't|rather than|no evidence of)\s+(?:evidence\s+of\s+|due\s+to\s+|caused\s+by\s+|because\s+of\s+)?(?:an?\s+|any\s+)?(?:later\s+|subsequent\s+|actual\s+)?(?:plan\s+|vendor\s+|product\s+|pricing\s+)?(?:change|update)\b/i.test(normalized)
+    && /\b(?:historical|earlier|stored|recorded|original)\b[^.]{0,60}\b(?:observation|source|evidence|terms|page|documentation)\b/i.test(normalized);
+}
 
 function supportedDifference(statements: string[], index: number, registry: ReturnType<typeof createSourceRegistry>['entries']) {
   // Evaluation-only arithmetic: do not treat a labelled derived difference as a vendor quote.

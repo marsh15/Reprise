@@ -24,7 +24,7 @@ it('does not treat numerical matching as semantic verification', () => {
 });
 it('returns one row per marker, worst state wins, without checking marker numbers', () => {
   expect(checkCitations('Product [1]. Costs $90 [1]. Costs $99 [1].', registry)).toEqual([
-    { marker: 1, sourceId: 'a', state: 'unverified', detail: 'not found in source: $99' },
+    { marker: 1, sourceId: 'a', state: 'unverified', detail: 'not found in cited excerpt: $99' },
   ]);
 });
 it('does not accept partial numerical substrings', () => {
