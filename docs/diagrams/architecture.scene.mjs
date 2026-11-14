@@ -8,7 +8,7 @@ const GREEN = '#22695a', GREEN_FILL = '#e4ede8';
 const PLUM = '#7a3e72', PLUM_FILL = '#f3e8f1';
 const BLUE = '#3a6ea5', BLUE_FILL = '#e5ecf4';
 const WHITE = '#ffffff', ZONE_FILL = '#efeee8';
-const FONT = 2; // Helvetica: a system face, so the SVG needs no embedded font
+const FONT = 5; // Excalifont, Excalidraw's own hand-drawn face
 
 const styles = {
   neutral: { stroke: BORDER, fill: WHITE },
@@ -23,21 +23,21 @@ const text = (id, x, y, value, size = 15, color = SECONDARY) =>
 
 function zone(id, x, y, w, h, { stroke = ZONE_LINE, dashed = false, fill = ZONE_FILL, width = 1 } = {}) {
   out.push({ type: 'rectangle', id, x, y, width: w, height: h, backgroundColor: fill, strokeColor: stroke, strokeWidth: width,
-    strokeStyle: dashed ? 'dashed' : 'solid', fillStyle: 'solid', roughness: 0, roundness: { type: 3, value: 14 } });
+    strokeStyle: dashed ? 'dashed' : 'solid', fillStyle: 'solid', roughness: 1, roundness: { type: 3, value: 14 } });
 }
 // A box with an editable bound title and a separate body text; build.mjs groups the three.
-function box(id, x, y, w, h, title, body, kind = 'neutral', { size = 19, strokeStyle = 'solid', bodyLines = null } = {}) {
+function box(id, x, y, w, h, title, body, kind = 'neutral', { size = 19, strokeStyle = 'solid', bodyLines = null, bodySize = 15 } = {}) {
   const s = styles[kind];
   out.push({ type: 'rectangle', id, x, y, width: w, height: h, backgroundColor: s.fill, strokeColor: s.stroke, strokeWidth: kind === 'neutral' ? 1.5 : 2,
-    strokeStyle, fillStyle: 'solid', roughness: 0, roundness: { type: 3, value: 10 },
+    strokeStyle, fillStyle: 'solid', roughness: 1, roundness: { type: 3, value: 10 },
     });
   text(`${id}-title`, x + 14, y + 9, title, size, INK);
-  if (body) text(`${id}-body`, x + 14, y + (bodyLines ?? 40), body, 15, SECONDARY);
+  if (body) text(`${id}-body`, x + 14, y + (bodyLines ?? 40), body, bodySize, SECONDARY);
 }
 function arrow(id, from, to, points, { double = false, color = INK, dashed = false } = {}) {
   const [x, y] = points[0];
   out.push({ type: 'arrow', id, x, y, points: points.map(([px, py]) => [px - x, py - y]), start: { id: from }, end: { id: to },
-    strokeColor: color, strokeWidth: 2, roughness: 0, strokeStyle: dashed ? 'dashed' : 'solid',
+    strokeColor: color, strokeWidth: 2, roughness: 1, strokeStyle: dashed ? 'dashed' : 'solid',
     endArrowhead: 'arrow', startArrowhead: double ? 'arrow' : null });
 }
 
@@ -45,11 +45,11 @@ function arrow(id, from, to, points, { double = false, color = INK, dashed = fal
 text('title', 30, 20, 'Reprise: architecture as implemented', 30, INK);
 text('subtitle', 30, 62, 'A local-first research chat. One Node process, local SQLite recall, one model-visible tool.', 17, SECONDARY);
 // legend
-out.push({ type: 'ellipse', id: 'lg-plum', x: 905, y: 27, width: 16, height: 16, strokeColor: PLUM, backgroundColor: PLUM_FILL, fillStyle: 'solid', strokeWidth: 2, roughness: 0 });
+out.push({ type: 'ellipse', id: 'lg-plum', x: 905, y: 27, width: 16, height: 16, strokeColor: PLUM, backgroundColor: PLUM_FILL, fillStyle: 'solid', strokeWidth: 2, roughness: 1 });
 text('lg-plum-t', 929, 25, 'Local memory (from earlier)', 15, SECONDARY);
-out.push({ type: 'ellipse', id: 'lg-blue', x: 1165, y: 27, width: 16, height: 16, strokeColor: BLUE, backgroundColor: BLUE, fillStyle: 'solid', strokeWidth: 2, roughness: 0 });
+out.push({ type: 'ellipse', id: 'lg-blue', x: 1165, y: 27, width: 16, height: 16, strokeColor: BLUE, backgroundColor: BLUE, fillStyle: 'solid', strokeWidth: 2, roughness: 1 });
 text('lg-blue-t', 1189, 25, 'Fresh research (searched now)', 15, SECONDARY);
-out.push({ type: 'rectangle', id: 'lg-green', x: 1445, y: 27, width: 16, height: 16, strokeColor: GREEN, backgroundColor: GREEN_FILL, fillStyle: 'solid', strokeWidth: 2, roughness: 0, roundness: { type: 3, value: 4 } });
+out.push({ type: 'rectangle', id: 'lg-green', x: 1445, y: 27, width: 16, height: 16, strokeColor: GREEN, backgroundColor: GREEN_FILL, fillStyle: 'solid', strokeWidth: 2, roughness: 1, roundness: { type: 3, value: 4 } });
 text('lg-green-t', 1469, 25, 'Deterministic code, no model', 15, SECONDARY);
 
 // ───────────────────────────── zones
@@ -66,11 +66,11 @@ text('zl-ext', 424, 884, 'Leaves this machine (HTTPS)', 15, MUTED);
 box('b-reader', 45, 145, 190, 62, 'Stream reader', 'fetch + SSE parser', 'neutral', { size: 17, bodyLines: 34 });
 box('b-thread', 45, 227, 190, 130, 'Reading thread', 'dateline margin\nrecall chips\nresearch status\ncitation cards', 'neutral', { size: 17, bodyLines: 34 });
 box('b-composer', 45, 377, 190, 92, 'Composer', 'Send · Stop (Esc)\nRetry saved message', 'neutral', { size: 17, bodyLines: 34 });
-box('b-sidebar', 45, 489, 190, 78, 'Conversation list', 'history · switch · delete', 'neutral', { size: 17, bodyLines: 34 });
+box('b-sidebar', 45, 489, 190, 78, 'Conversation list', 'history · switch · delete', 'neutral', { size: 17, bodyLines: 34, bodySize: 14 });
 text('b-note', 45, 590, 'An unacknowledged\nrequest is kept in\nsessionStorage for\nrecovery.', 15, MUTED);
 
 // ───────────────────────────── local process: request path (row A)
-box('a-admit', 410, 200, 190, 130, 'Request admission', 'requestPolicy.ts\nHost, Origin, Fetch\nMetadata; JSON bodies\nBefore Hono and Vite', 'green');
+box('a-admit', 410, 200, 190, 130, 'Request admission', 'requestPolicy.ts\nHost, Origin, Fetch\nMetadata; JSON bodies\nBefore Hono and Vite', 'green', { size: 18, bodySize: 14 });
 box('a-hono', 635, 200, 190, 130, 'Hono API', 'app.ts\n/api/* routes\nPOST /api/turns\nstreams SSE back', 'neutral');
 box('a-turn', 860, 200, 190, 130, 'Turn service', 'turns/service.ts\nidempotent request id\none turn per chat\nStop → interrupted', 'neutral');
 box('a-recall', 1085, 200, 190, 130, 'Dates + recall', 'time/resolve.ts\nmemory/recall.ts\ndate index + FTS5\nbounded packet', 'plum');
@@ -94,8 +94,8 @@ arrow('e-registry-cite', 'a-registry', 'a-cite', [[1050, 545], [1085, 545]]);
 
 // ───────────────────────────── browser ↔ server
 arrow('e-composer-admit', 'b-composer', 'a-admit', [[235, 423], [322, 423], [322, 265], [410, 265]]);
-arrow('e-hono-reader', 'a-hono', 'b-reader', [[730, 200], [730, 176], [235, 176]]);
-text('e-hono-reader-t', 410, 124, 'SSE events as the turn runs:\nrecall · search.* · answer.delta\ncitations · turn.completed', 15, MUTED);
+arrow('e-hono-reader', 'a-hono', 'b-reader', [[730, 200], [730, 190], [235, 190]]);
+text('e-hono-reader-t', 410, 120, 'SSE events as the turn runs:\nrecall · search.* · answer.delta\ncitations · turn.completed', 14, MUTED);
 
 // ───────────────────────────── SQLite
 box('d-messages', 1390, 130, 210, 62, 'messages', 'raw turns · local date', 'plum', { size: 17, bodyLines: 34 });

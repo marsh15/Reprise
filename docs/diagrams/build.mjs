@@ -15,11 +15,36 @@ const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_CORE ?? 'playwright-core');
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
-const page = await browser.newPage();
-page.on('pageerror', e => console.error('pageerror:', e.message.slice(0, 400)));
-await page.setContent('<html><body style="margin:0"></body></html>');
-await page.addScriptTag({ content: readFileSync(join(toolDir, 'bundle.js'), 'utf8') });
+// Excalidraw fetches its hand-drawn fonts (Excalifont) by URL. Serve them from the installed package so the export
+// is offline and the SVG embeds the real face instead of a fallback.
+const fontRoot = join(toolDir, 'node_modules/@excalidraw/excalidraw/dist/prod/fonts');
+async function openPage(fontCss = '') {
+  const page = await browser.newPage();
+  page.on('pageerror', e => console.error('pageerror:', e.message.slice(0, 400)));
+  await page.route(/\/fonts\/.+\.woff2/, route => {
+    const rel = new URL(route.request().url()).pathname.split('/fonts/')[1];
+    try { route.fulfill({ body: readFileSync(join(fontRoot, rel)), contentType: 'font/woff2', headers: { 'access-control-allow-origin': '*' } }); }
+    catch { console.error('missing font', rel); route.abort(); }
+  });
+  await page.setContent(`<html><head><style>${fontCss}</style></head><body style="margin:0"></body></html>`);
+  await page.addScriptTag({ content: readFileSync(join(toolDir, 'bundle.js'), 'utf8') });
+  return page;
+}
 
+// Pass 1 only harvests the embedded Excalifont @font-face. Excalidraw measures and caches text widths on first use, so
+// a page that measures before the face is loaded keeps fallback-font widths for the whole run; pass 2 starts with
+// the face already loaded.
+const probe = await openPage();
+const fontCss = await probe.evaluate(async skeleton => {
+  const L = window.ExLib;
+  const svg = await L.exportToSvg({ elements: L.convertToExcalidrawElements(skeleton, { regenerateIds: false }), appState: {}, files: {} });
+  return svg.querySelector('style.style-fonts')?.textContent ?? '';
+}, skeleton);
+if (!fontCss.includes('Excalifont')) throw new Error('Excalifont was not embedded by the probe export');
+await probe.close();
+
+const page = await openPage(fontCss);
+await page.evaluate(() => document.fonts.load('20px Excalifont'));
 const result = await page.evaluate(async ({ skeleton, groups }) => {
   const L = window.ExLib;
   const elements = L.convertToExcalidrawElements(skeleton, { regenerateIds: false });
