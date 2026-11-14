@@ -8,11 +8,9 @@ Every answer keeps its sources as dated observations, so an earlier reading and 
 
 ## Reprise in action
 
-<video src="docs/assets/reprise-demo.mp4" poster="docs/assets/reprise-demo-poster.jpg" controls muted playsinline width="100%">
-  <a href="docs/assets/reprise-demo.mp4"><img src="docs/assets/reprise-demo-poster.jpg" alt="Reprise: two dated observations of one page, side by side, from the demo film"></a>
-</video>
+[![Reprise: two dated observations of one page, side by side, from the demo film](docs/assets/reprise-demo-poster.jpg)](docs/assets/reprise-demo.mp4?raw=true)
 
-*A 22-second silent film of the real interface ([MP4, 2.4 MB](docs/assets/reprise-demo.mp4)). It is a scripted demonstration: the model and the search provider are scripted fixtures, every source is an invented `[Demo]` page, and no live provider was called.*
+*A 22-second silent film of the real interface. Select the poster to download the MP4 (2.4 MB). It is a scripted demonstration: the model and the search provider are scripted fixtures, every source is an invented `[Demo]` page, and no live provider was called.*
 
 ## What makes it different
 
