@@ -10,7 +10,7 @@ One model has one tool, web search, in a loop bounded by rounds, queries and res
 
 Code checks citation markers and whether recognizable numbers appear in the cited excerpts. That is a useful warning, not proof of meaning. A dated source can establish a price change; two observations alone establish a difference.
 
-I skipped routers and embeddings to keep this path inspectable. Offline tests exercise these boundaries. Live quality and model selection await provider access; the default remains provisional.
+I skipped routers and embeddings to keep this path inspectable. Offline tests exercise these boundaries. A final one-run real-model evaluation did not pass every scenario, so the remaining limits are documented rather than hidden; the runtime model is gpt-6-luna.
 
 ## Screen outline
 
@@ -19,4 +19,4 @@ Use explicitly labelled offline fixtures until live verification passes; the scr
 1. Show a dated recall and its stated assumption; point to the raw past turn.
 2. Show research progress and a citation card with historical and current observations.
 3. Show an unverified citation or missing evidence, then the ledger and bounded loop.
-4. Close on the offline evaluation categories and the pending live acceptance gate.
+4. Close on the offline evaluation categories and the documented live-evaluation limits (docs/FINAL-RELEASE.md).

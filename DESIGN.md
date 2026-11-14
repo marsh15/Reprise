@@ -26,6 +26,6 @@ Change classification remains a model judgment under explicit rules: a source es
 
 Routers, multi-agent pipelines and a second-model verifier add calls and failure points without demonstrated benefit here. Embeddings add retrieval machinery; summaries lose provenance. Model-native search hides evidence needed for the ledger and replay. A framework would obscure the small bounded loop; Next.js adds conventions without a needed capability. Built-in SQLite avoids a database service and native npm addon.
 
-Accepted limits: single user/process, no authentication, English date rules, bounded keyword recall, excerpt-only evidence, no resumable streams, and possible model mistakes. Offline tests and scripted scenarios validate mechanics, not conversational quality. Live providers work, but grounding failures block P0 acceptance. Model selection remains open; the provisional model is unproven.
+Accepted limits: single user/process, no authentication, English date rules, bounded keyword recall, excerpt-only evidence, no resumable streams, and possible model mistakes. Offline tests and scripted scenarios validate mechanics, not conversational quality. Live providers work. The final one-run real-model evaluation did not pass every scenario, and the remaining limits are recorded in `docs/FINAL-RELEASE.md`. The runtime model is `gpt-6-luna`, a practical choice, not a benchmark winner.
 
 With another week: first resolve live failures and complete human review, then prioritize structured price observations, archived evidence and paraphrase recall.
