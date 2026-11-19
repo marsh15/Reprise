@@ -137,8 +137,6 @@ npm run eval -- --live --only C1,D1,F1  # real LLM + real Tavily smoke subset
 
 The [evaluation guide](evals/README.md) covers scenarios, capture/replay and human review. Generated reports stay in ignored `evals/results/`. A live subset is not full acceptance, and checked-in search cassettes are synthetic.
 
-**Known issue.** If the checkout path contains the word `private` (on macOS, `/tmp` resolves to `/private/tmp`), one test in `tests/integration/security.test.ts` ("serves the client and HMR runtime but no private workspace files") fails. It asserts that Vite's 403 page does not contain the word `private`, and that page echoes the blocked file's path. The 403 is correct and the product is unaffected; the test is just sensitive to the path. Clone into a normal location such as your home directory and the full suite passes.
-
 ## Technical decisions
 
 - **Code, not the model, owns calendars and retrieval.** Date arithmetic and recall are reproducible and inspectable; the cost is that keyword recall can miss paraphrases.

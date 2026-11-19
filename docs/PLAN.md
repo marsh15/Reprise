@@ -7,7 +7,7 @@
 > Do not change a settled decision without asking the owner.
 > Today's reference date: Wed 2026-11-11 (owner's timezone is Asia/Kolkata).
 
-**Implementation status (11 November 2026):** M0–M5 implementation is complete. M6 final review and offline verification are complete. Live-provider verification has run, but P0 acceptance and model selection remain unmet; see [LIVE-ACCEPTANCE.md](LIVE-ACCEPTANCE.md) and the subsequent targeted [CORRECTNESS-REVIEW.md](CORRECTNESS-REVIEW.md). [M6-CHECKPOINT.md](M6-CHECKPOINT.md) records the earlier offline baseline. The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
+**Implementation status (19 November 2026):** M0–M6 are complete and merged to `main`, with security hardening (PR #1), acceptance corrections (PR #2) and the README showcase (PR #3). Offline verification is green: 748/748 tests and 23/23 mock scenarios. Real-model evaluation ran once per scenario and did not pass every scenario; the model default `gpt-6-luna` is a practical, provisional choice and the known limits are recorded in [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md) and [FINAL-RELEASE.md](FINAL-RELEASE.md). Earlier history: [LIVE-ACCEPTANCE.md](LIVE-ACCEPTANCE.md), [CORRECTNESS-REVIEW.md](CORRECTNESS-REVIEW.md), [M6-CHECKPOINT.md](M6-CHECKPOINT.md) (the dated checkpoints stay historical). The specifications and performance figures below are design policies/targets unless a checkpoint records measurements.
 
 ---
 

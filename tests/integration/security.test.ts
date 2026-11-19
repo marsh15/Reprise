@@ -37,7 +37,7 @@ beforeAll(async () => {
   provider = await startFakeProvider();
   const editor = join(dir, 'editor.sh');
   writeFileSync(editor, `#!/bin/sh\necho "$@" >> '${editorLog}'\n`); chmodSync(editor, 0o700);
-  mkdirSync(dataDir, { recursive: true }); writeFileSync(workspaceDb, 'SQLite format 3\0private');
+  mkdirSync(dataDir, { recursive: true }); writeFileSync(workspaceDb, 'SQLite format 3\0reprise-secret-marker');
   const reserve = createServer(); await new Promise<void>(r => reserve.listen(0, '127.0.0.1', r));
   port = (reserve.address() as { port: number }).port; await new Promise<void>(r => reserve.close(() => r()));
   child = spawn(process.execPath, ['--import', 'tsx', 'src/server/main.ts'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
@@ -156,7 +156,7 @@ it('serves the client and HMR runtime but no private workspace files', async () 
     '/../../README.md', `/@fs${join(dir, 'reprise.db')}`, '/@fs/etc/hosts', `/@fs${repo}/data/${workspaceDb.split('/').at(-1)}`];
   for (const path of blocked) for (const headers of [other, { 'sec-fetch-site': 'same-origin' }]) {
     const response = await raw('GET', path, headers);
-    expect(response.body, path).not.toContain('SQLite format 3'); expect(response.body, path).not.toContain('private');
+    expect(response.body, path).not.toContain('SQLite format 3'); expect(response.body, path).not.toContain('reprise-secret-marker');
     if (response.status === 200) expect(response.body, path).not.toContain(readme);
     expect(response.headers['access-control-allow-origin'], path).toBeUndefined();
   }

@@ -12,7 +12,7 @@ Keep these results separate:
 4. **Fully live:** real LLM and Tavily. Historical scenario records remain labelled fixtures; they are not genuine user history. Capture/retrieval time remains actual, even though the scenario clock is frozen.
 5. **Human review:** inspect transcripts, claims and source excerpts for semantic support and conversational quality. Every report leaves this pending. An automatic pass does not complete this review.
 
-The targeted remediation record is [CORRECTNESS-REVIEW.md](../docs/CORRECTNESS-REVIEW.md); it separates product defects from harness defects and records every new attempt. Live OpenAI/Tavily checks have now run, including all 11 P0 scenarios with frozen synthetic evidence. Acceptance remains unmet; see [LIVE-ACCEPTANCE.md](../docs/LIVE-ACCEPTANCE.md) for actual scores, source-review failures, recorded-search limits and measurements. The [M6 checkpoint](../docs/M6-CHECKPOINT.md) records the earlier offline baseline.
+The targeted remediation record is [CORRECTNESS-REVIEW.md](../docs/CORRECTNESS-REVIEW.md); it separates product defects from harness defects and records every new attempt. Live OpenAI/Tavily checks have now run, including all 11 P0 scenarios with frozen synthetic evidence. That earlier run did not meet acceptance; see [LIVE-ACCEPTANCE.md](../docs/LIVE-ACCEPTANCE.md) for its scores and source-review failures. The latest acceptance run and the final state are in [FINAL-ACCEPTANCE.md](../docs/FINAL-ACCEPTANCE.md) and [FINAL-RELEASE.md](../docs/FINAL-RELEASE.md) (P0 9/11, P1 9/12 by automatic assertions, human review pending). The [M6 checkpoint](../docs/M6-CHECKPOINT.md) records the earlier offline baseline.
 
 ## Run and reproduce
 
@@ -82,7 +82,7 @@ Each scenario has final-answer TTFT, total agent latency, input/output tokens, e
 
 Costs use provider token usage × dated rates in `prices.json`, ignore cache discounts and search credits, and are estimates, not measured bills. The current rate table is inherited from M2; no new billing measurement or pricing validation occurred in M4. `measuredUsd` remains null. No model-cost metric can be inferred from the successful mocks.
 
-## Pending model bake-off
+## Model bake-off (reference; no winner established)
 
 Keep the provisional default unchanged until owner approval. Approved comparison candidates only:
 
